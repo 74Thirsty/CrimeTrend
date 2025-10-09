@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CrimeTrend - Demo</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Override for demo without Google Maps */
+        #map {
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .demo-overlay {
+            text-align: center;
+            color: #bdc3c7;
+            padding: 40px;
+            max-width: 600px;
+        }
+        
+        .demo-overlay h2 {
+            color: #3498db;
+            margin-bottom: 20px;
+        }
+        
+        .demo-marker {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid white;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .demo-marker:hover {
+            transform: scale(1.3);
+        }
+        
+        .demo-marker.high {
+            background: #e74c3c;
+            top: 30%;
+            left: 40%;
+        }
+        
+        .demo-marker.medium {
+            background: #f39c12;
+            top: 50%;
+            left: 60%;
+        }
+        
+        .demo-marker.low {
+            background: #2ecc71;
+            top: 70%;
+            left: 35%;
+        }
+        
+        .demo-info {
+            position: absolute;
+            background: #2c3e50;
+            padding: 15px;
+            border-radius: 8px;
+            color: white;
+            min-width: 250px;
+            display: none;
+        }
+        
+        .demo-info.active {
+            display: block;
+        }
+        
+        .info-high {
+            top: 25%;
+            left: 42%;
+        }
+        
+        .info-medium {
+            top: 45%;
+            left: 62%;
+        }
+        
+        .info-low {
+            top: 65%;
+            left: 37%;
+        }
+        
+        .api-notice {
+            background: #f39c12;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-weight: 500;
+        }
+        
+        .api-notice a {
+            color: white;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="api-notice">
+        ⚠️ Google Maps API key required. <a href="setup.html">Click here for setup instructions</a>
+    </div>
+    
+    <div class="container">
+        <header>
+            <h1>CrimeTrend - Live Crime Events</h1>
+            <div class="header-info">
+                <span id="event-count">5 Active Events</span>
+                <span id="last-update">Last updated: Demo Mode</span>
+            </div>
+        </header>
+        
+        <div class="map-container">
+            <div id="map">
+                <div class="demo-overlay">
+                    <h2>📍 Interactive Crime Map Demo</h2>
+                    <p>This is a demonstration of the CrimeTrend application. Hover over the colored pins to see event information.</p>
+                    <p style="margin-top: 20px;">
+                        🔴 High Severity &nbsp;&nbsp;
+                        🟠 Medium Severity &nbsp;&nbsp;
+                        🟢 Low Severity
+                    </p>
+                    <p style="margin-top: 20px; font-size: 14px; color: #95a5a6;">
+                        To view the full interactive map with Google Maps, please configure your API key.
+                    </p>
+                </div>
+                
+                <!-- Demo markers -->
+                <div class="demo-marker high" onmouseenter="showInfo('high')" onmouseleave="hideInfo('high')"></div>
+                <div class="demo-marker medium" onmouseenter="showInfo('medium')" onmouseleave="hideInfo('medium')"></div>
+                <div class="demo-marker low" onmouseenter="showInfo('low')" onmouseleave="hideInfo('low')"></div>
+                
+                <!-- Demo info windows -->
+                <div class="demo-info info-high" id="info-high">
+                    <h3 style="color: #3498db; margin-bottom: 10px;">ROBBERY</h3>
+                    <div style="margin: 5px 0;"><strong style="color: #3498db;">Severity:</strong> <span style="color: #e74c3c;">HIGH</span></div>
+                    <div style="margin: 5px 0;"><strong style="color: #3498db;">Location:</strong> 123 Main St, Los Angeles, CA</div>
+                    <div style="margin: 10px 0; padding: 10px; background: #34495e; border-radius: 5px; border-left: 3px solid #3498db;">
+                        <strong style="color: #3498db;">📻 Radio Feed:</strong>
+                        <p style="margin-top: 5px; font-size: 13px; color: #bdc3c7;">Units responding. Suspect armed and dangerous.</p>
+                    </div>
+                </div>
+                
+                <div class="demo-info info-medium" id="info-medium">
+                    <h3 style="color: #3498db; margin-bottom: 10px;">ASSAULT</h3>
+                    <div style="margin: 5px 0;"><strong style="color: #3498db;">Severity:</strong> <span style="color: #f39c12;">MEDIUM</span></div>
+                    <div style="margin: 5px 0;"><strong style="color: #3498db;">Location:</strong> 456 Oak Ave, Los Angeles, CA</div>
+                    <div style="margin: 10px 0; padding: 10px; background: #34495e; border-radius: 5px; border-left: 3px solid #3498db;">
+                        <strong style="color: #3498db;">📻 Radio Feed:</strong>
+                        <p style="margin-top: 5px; font-size: 13px; color: #bdc3c7;">Medical assistance requested on scene.</p>
+                    </div>
+                </div>
+                
+                <div class="demo-info info-low" id="info-low">
+                    <h3 style="color: #3498db; margin-bottom: 10px;">THEFT</h3>
+                    <div style="margin: 5px 0;"><strong style="color: #3498db;">Severity:</strong> <span style="color: #2ecc71;">LOW</span></div>
+                    <div style="margin: 5px 0;"><strong style="color: #3498db;">Location:</strong> 789 Elm St, Los Angeles, CA</div>
+                    <div style="margin: 10px 0; padding: 10px; background: #34495e; border-radius: 5px; border-left: 3px solid #3498db;">
+                        <strong style="color: #3498db;">📻 Radio Feed:</strong>
+                        <p style="margin-top: 5px; font-size: 13px; color: #bdc3c7;">Vehicle theft report being processed.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button id="toggle-updates" class="btn" disabled style="opacity: 0.6;">Demo Mode - Updates Disabled</button>
+            <select id="event-filter" class="filter-select" disabled style="opacity: 0.6;">
+                <option value="all">All Events</option>
+                <option value="robbery">Robbery</option>
+                <option value="assault">Assault</option>
+                <option value="theft">Theft</option>
+                <option value="burglary">Burglary</option>
+                <option value="vandalism">Vandalism</option>
+            </select>
+        </div>
+    </div>
+    
+    <script>
+        function showInfo(type) {
+            document.getElementById('info-' + type).classList.add('active');
+        }
+        
+        function hideInfo(type) {
+            document.getElementById('info-' + type).classList.remove('active');
+        }
+    </script>
+</body>
+</html>

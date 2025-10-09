@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CrimeTrend - Live Crime Event Map</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>CrimeTrend - Live Crime Events</h1>
+            <div class="header-info">
+                <span id="event-count">0 Active Events</span>
+                <span id="last-update">Last updated: Never</span>
+            </div>
+        </header>
+        
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+        
+        <div class="controls">
+            <button id="toggle-updates" class="btn">Pause Updates</button>
+            <select id="event-filter" class="filter-select">
+                <option value="all">All Events</option>
+                <option value="robbery">Robbery</option>
+                <option value="assault">Assault</option>
+                <option value="theft">Theft</option>
+                <option value="burglary">Burglary</option>
+                <option value="vandalism">Vandalism</option>
+            </select>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap" async defer></script>
+</body>
+</html>
