@@ -1,0 +1,10 @@
+{
+  "name": "crimetrend",
+  "version": "1.0.0",
+  "description": "Real-time police incident mapping and monitoring platform.",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server/index.js"
+  },
+  "license": "MIT"
+}
