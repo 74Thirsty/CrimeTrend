@@ -1,7 +1,23 @@
 import { Dispatch, ReactNode, SetStateAction, useEffect } from 'react';
-import { FilterState } from './Filters';
+import { Category, FilterState, Severity, Timeframe } from './Filters';
 import { IncidentStats } from '../hooks/useIncidentStream';
 import { motion } from 'framer-motion';
+
+const CATEGORY_VALUES: readonly Category[] = ['violent', 'property', 'traffic', 'other'] as const;
+const SEVERITY_VALUES: readonly Severity[] = ['low', 'medium', 'high', 'critical'] as const;
+const TIMEFRAME_VALUES: readonly Timeframe[] = ['1h', '24h', '7d'] as const;
+
+function isCategory(value: unknown): value is Category {
+  return typeof value === 'string' && CATEGORY_VALUES.includes(value as Category);
+}
+
+function isSeverity(value: unknown): value is Severity {
+  return typeof value === 'string' && SEVERITY_VALUES.includes(value as Severity);
+}
+
+function isTimeframe(value: unknown): value is Timeframe {
+  return typeof value === 'string' && TIMEFRAME_VALUES.includes(value as Timeframe);
+}
 
 interface LayoutShellProps {
   children: ReactNode;
@@ -29,12 +45,23 @@ export function LayoutShell({
     if (stored) {
       try {
         const parsed = JSON.parse(stored) as Partial<FilterState>;
-        setFilters((prev) => ({
-          ...prev,
-          ...parsed,
-          categories: new Set((parsed.categories as string[] | undefined) ?? Array.from(prev.categories)),
-          severities: new Set((parsed.severities as string[] | undefined) ?? Array.from(prev.severities))
-        }));
+        setFilters((prev) => {
+          const categories = Array.isArray(parsed.categories)
+            ? parsed.categories.filter(isCategory)
+            : Array.from(prev.categories);
+          const severities = Array.isArray(parsed.severities)
+            ? parsed.severities.filter(isSeverity)
+            : Array.from(prev.severities);
+
+          return {
+            ...prev,
+            query: typeof parsed.query === 'string' ? parsed.query : prev.query,
+            timeframe: isTimeframe(parsed.timeframe) ? parsed.timeframe : prev.timeframe,
+            heatmap: typeof parsed.heatmap === 'boolean' ? parsed.heatmap : prev.heatmap,
+            categories: new Set(categories),
+            severities: new Set(severities)
+          };
+        });
       } catch (error) {
         console.error('Failed to parse stored filters', error);
       }
