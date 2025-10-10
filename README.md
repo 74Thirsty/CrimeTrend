@@ -1,4 +1,6 @@
 # CrimeTrend
+![Sheen Banner](https://raw.githubusercontent.com/74Thirsty/74Thirsty/main/assets/crime.svg)
+
 
 CrimeTrend is a real-time crime intelligence stack built around a lightweight Node.js backend and a modern, responsive React dashboard. The system ingests live incident data, streams it to connected clients via Server-Sent Events (SSE), and visualises it through a map-first UI with live feed cards, analytics, and alerting.
 
