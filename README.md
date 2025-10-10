@@ -24,8 +24,10 @@ CrimeTrend is a real-time crime intelligence stack built around a lightweight No
 
 ### Backend
 
+The repository is configured as an npm workspace so installing dependencies from the project root will also install the React frontend packages under `crime-trend-ui/`.
+
 ```bash
-npm install   # no external deps but ensures lockfile generation if desired
+npm install
 npm start
 ```
 
@@ -38,21 +40,17 @@ The backend listens on `http://localhost:8080`, serves static assets from `publi
 ### Frontend (development)
 
 ```bash
-cd crime-trend-ui
-npm install
-npm run dev
+npm run --workspace crime-trend-ui dev
 ```
 
-The Vite dev server proxies `/api` and `/stream` calls to the Node backend, so run both processes concurrently.
+The Vite dev server proxies `/api` and `/stream` calls to the Node backend, so run both processes concurrently. You can still `cd crime-trend-ui` and use the usual `npm run` scripts if preferred.
 
 ### Frontend (production)
 
 ```bash
-cd crime-trend-ui
-npm install
-npm run build
-rm -rf ../public/*
-cp -r dist/* ../public/
+npm run --workspace crime-trend-ui build
+rm -rf public/*
+cp -r crime-trend-ui/dist/* public/
 ```
 
 Restart the backend (`npm start`) and visit `http://localhost:8080` to load the built SPA.
