@@ -8,6 +8,8 @@ import { useIncidentStream } from './hooks/useIncidentStream';
 import { HotZoneAlerts } from './components/HotZoneAlerts';
 import { LayoutShell } from './components/LayoutShell';
 import { ALL_STATE_OPTION, isValidStateFilter } from './constants/states';
+import { ALL_COUNTY_OPTION, normaliseCountySelection } from './constants/counties';
+import { DEFAULT_STREAM_SOURCE, isValidStreamSource } from './constants/streams';
 
 const PRESET_STORAGE_KEY = 'crime-trend-filter-presets-v2';
 const CATEGORY_VALUES: readonly Category[] = ['violent', 'property', 'traffic', 'other'] as const;
@@ -37,6 +39,8 @@ function sanitisePreset(candidate: unknown): SavedFilterPreset | null {
   const timeframe = filters.timeframe && TIMEFRAME_VALUES.includes(filters.timeframe) ? filters.timeframe : '24h';
   const heatmap = typeof filters.heatmap === 'boolean' ? filters.heatmap : false;
   const state = isValidStateFilter(filters.state) ? filters.state : ALL_STATE_OPTION;
+  const county = normaliseCountySelection(state, filters.county);
+  const stream = isValidStreamSource(filters.stream) ? filters.stream : DEFAULT_STREAM_SOURCE;
 
   return {
     id: typeof raw.id === 'string' ? raw.id : createPresetId(),
@@ -47,7 +51,9 @@ function sanitisePreset(candidate: unknown): SavedFilterPreset | null {
       severities,
       timeframe,
       heatmap,
-      state
+      state,
+      county,
+      stream
     }
   };
 }
@@ -59,7 +65,9 @@ function App() {
     severities: new Set(),
     timeframe: '24h',
     heatmap: false,
-    state: ALL_STATE_OPTION
+    state: ALL_STATE_OPTION,
+    county: ALL_COUNTY_OPTION,
+    stream: DEFAULT_STREAM_SOURCE
   });
   const [savedPresets, setSavedPresets] = useState<SavedFilterPreset[]>(() => {
     if (typeof window === 'undefined') {
@@ -99,7 +107,9 @@ function App() {
       severities: Array.from(state.severities) as Severity[],
       timeframe: state.timeframe,
       heatmap: state.heatmap,
-      state: state.state
+      state: state.state,
+      county: state.county,
+      stream: state.stream
     }),
     []
   );
@@ -142,7 +152,9 @@ function App() {
         severities: new Set(preset.filters.severities),
         timeframe: preset.filters.timeframe,
         heatmap: preset.filters.heatmap,
-        state: preset.filters.state
+        state: preset.filters.state,
+        county: normaliseCountySelection(preset.filters.state, preset.filters.county),
+        stream: isValidStreamSource(preset.filters.stream) ? preset.filters.stream : DEFAULT_STREAM_SOURCE
       });
     },
     [savedPresets]

@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import type { HotZone, Incident } from '../hooks/useIncidentStream';
 import type { FilterState } from './Filters';
 import { ALL_STATE_OPTION } from '../constants/states';
+import { ALL_COUNTY_OPTION } from '../constants/counties';
 
 interface MapViewProps {
   incidents: Incident[];
@@ -29,6 +30,11 @@ export function MapView({ incidents, filters, hotZones = [] }: MapViewProps) {
       }
       if (filters.state !== ALL_STATE_OPTION) {
         if (!incident.state || incident.state.toUpperCase() !== filters.state) {
+          return false;
+        }
+      }
+      if (filters.county !== ALL_COUNTY_OPTION) {
+        if (!incident.location.toLowerCase().includes(filters.county.toLowerCase())) {
           return false;
         }
       }

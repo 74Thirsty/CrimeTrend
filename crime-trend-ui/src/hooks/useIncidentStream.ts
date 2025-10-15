@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import type { FilterState } from '../components/Filters';
 import { ALL_STATE_OPTION, normaliseStateCode } from '../constants/states';
+import { ALL_COUNTY_OPTION } from '../constants/counties';
+import { DEFAULT_STREAM_SOURCE } from '../constants/streams';
 
 type TimelineEntry = {
   code?: string;
@@ -79,7 +81,20 @@ export interface HotZone {
   categories: Record<string, number>;
 }
 
-const STREAM_URL = '/stream/incidents';
+const STREAM_URL_BASE = '/stream/incidents';
+
+function buildStreamUrl({ stream, state, county }: Pick<FilterState, 'stream' | 'state' | 'county'>) {
+  const params = new URLSearchParams();
+  params.set('stream', stream ?? DEFAULT_STREAM_SOURCE);
+  if (state && state !== ALL_STATE_OPTION) {
+    params.set('state', state);
+  }
+  if (county && county !== ALL_COUNTY_OPTION) {
+    params.set('county', county);
+  }
+  const query = params.toString();
+  return query ? `${STREAM_URL_BASE}?${query}` : STREAM_URL_BASE;
+}
 
 function parseCoordinate(value?: number | string): number | null {
   if (typeof value === 'number') {
@@ -197,8 +212,15 @@ export function useIncidentStream(filters: FilterState) {
 
   useEffect(() => {
     let cancelled = false;
+    const { stream, state, county } = filters;
     axios
-      .get<{ incidents?: RawIncident[] }>('/api/incidents')
+      .get<{ incidents?: RawIncident[] }>('/api/incidents', {
+        params: {
+          stream,
+          state: state !== ALL_STATE_OPTION ? state : undefined,
+          county: county !== ALL_COUNTY_OPTION ? county : undefined
+        }
+      })
       .then((response) => {
         if (!cancelled) {
           setIncidents(mapIncidents(response.data.incidents));
@@ -216,7 +238,13 @@ export function useIncidentStream(filters: FilterState) {
       };
     }
 
-    const eventSource = new EventSource(STREAM_URL);
+    const eventSource = new EventSource(
+      buildStreamUrl({
+        stream,
+        state,
+        county
+      })
+    );
     eventSourceRef.current = eventSource;
     eventSource.addEventListener('message', handleMessage);
     eventSource.addEventListener('heartbeat', () => void 0);
@@ -235,7 +263,7 @@ export function useIncidentStream(filters: FilterState) {
       eventSource.close();
       eventSourceRef.current = null;
     };
-  }, [handleMessage, paused]);
+  }, [handleMessage, paused, filters.stream, filters.state, filters.county]);
 
   const togglePause = useCallback(() => {
     setPaused((prev) => !prev);
@@ -254,6 +282,7 @@ export function useIncidentStream(filters: FilterState) {
       }
     })();
 
+    const countyNeedle = filters.county !== ALL_COUNTY_OPTION ? filters.county.toLowerCase() : null;
     const recent = incidents
       .filter((incident) => {
         if (filters.state === ALL_STATE_OPTION) {
@@ -263,6 +292,12 @@ export function useIncidentStream(filters: FilterState) {
           return false;
         }
         return incident.state.toUpperCase() === filters.state;
+      })
+      .filter((incident) => {
+        if (!countyNeedle) {
+          return true;
+        }
+        return incident.location.toLowerCase().includes(countyNeedle);
       })
       .filter((incident) => new Date(incident.timestamp).getTime() >= limitTimestamp);
     recent.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -315,7 +350,7 @@ export function useIncidentStream(filters: FilterState) {
         categories
       }
     };
-  }, [incidents, filters.timeframe, filters.state]);
+  }, [incidents, filters.timeframe, filters.state, filters.county]);
 
   return {
     incidents: filteredIncidents,

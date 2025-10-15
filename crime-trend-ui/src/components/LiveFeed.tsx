@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { FilterState } from './Filters';
 import type { Incident } from '../hooks/useIncidentStream';
+import { ALL_COUNTY_OPTION } from '../constants/counties';
 
 interface LiveFeedProps {
   incidents: Incident[];
@@ -25,6 +26,11 @@ export function LiveFeed({ incidents, filters, paused }: LiveFeedProps) {
       }
       if (filters.severities.size > 0 && !filters.severities.has(incident.severity)) {
         return false;
+      }
+      if (filters.county !== ALL_COUNTY_OPTION) {
+        if (!incident.location.toLowerCase().includes(filters.county.toLowerCase())) {
+          return false;
+        }
       }
       if (query) {
         const text = `${incident.title} ${incident.location} ${incident.description ?? ''} ${incident.source.name} ${
