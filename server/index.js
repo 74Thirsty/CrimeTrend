@@ -13,6 +13,24 @@ incidentService.start();
 
 const sseClients = new Set();
 
+const SSE_RETRY_MS = 5000;
+
+function cleanupSseClient(client, reason = 'unknown') {
+  if (!client || client.closed) return;
+  client.closed = true;
+  clearInterval(client.heartbeat);
+  if (typeof client.teardown === 'function') {
+    try {
+      client.teardown();
+    } catch (error) {
+      logger.warn('failed to teardown SSE client listeners', { error: error.message });
+    }
+  }
+  if (sseClients.delete(client)) {
+    logger.info('client disconnected from SSE', { total: sseClients.size, reason });
+  }
+}
+
 function sendJson(res, statusCode, payload) {
   const body = JSON.stringify(payload);
   res.writeHead(statusCode, {
@@ -65,32 +83,69 @@ function handleSse(req, res) {
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-store',
-    'Connection': 'keep-alive'
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no'
   });
-  res.write('\n');
+  if (req.socket && typeof req.socket.setTimeout === 'function') {
+    req.socket.setTimeout(0);
+  }
+  res.write(`retry: ${SSE_RETRY_MS}\n\n`);
 
-  const heartbeat = setInterval(() => {
-    res.write('event: heartbeat\n');
-    res.write(`data: ${JSON.stringify({ timestamp: new Date().toISOString() })}\n\n`);
+  const client = { res, heartbeat: null, teardown: null, closed: false };
+  client.heartbeat = setInterval(() => {
+    try {
+      res.write('event: heartbeat\n');
+      res.write(`data: ${JSON.stringify({ timestamp: new Date().toISOString() })}\n\n`);
+    } catch (error) {
+      cleanupSseClient(client, 'heartbeat-write-failed');
+    }
   }, 25000);
-
-  const client = { res, heartbeat };
   sseClients.add(client);
   logger.info('client connected to SSE', { total: sseClients.size });
 
-  res.write(`data: ${JSON.stringify({ incidents: incidentService.getSnapshot() })}\n\n`);
+  const snapshotPayload = JSON.stringify({ incidents: incidentService.getSnapshot() });
+  try {
+    res.write(`data: ${snapshotPayload}\n\n`);
+  } catch (error) {
+    cleanupSseClient(client, 'initial-write-failed');
+    return;
+  }
 
-  req.on('close', () => {
-    clearInterval(heartbeat);
-    sseClients.delete(client);
-    logger.info('client disconnected from SSE', { total: sseClients.size });
-  });
+  const onClientClosed = () => cleanupSseClient(client, 'connection-closed');
+  const onClientError = () => cleanupSseClient(client, 'request-error');
+  const onResponseError = () => cleanupSseClient(client, 'response-error');
+  client.teardown = () => {
+    if (typeof req.off === 'function') {
+      req.off('close', onClientClosed);
+      req.off('error', onClientError);
+    } else {
+      req.removeListener?.('close', onClientClosed);
+      req.removeListener?.('error', onClientError);
+    }
+    if (typeof res.off === 'function') {
+      res.off('error', onResponseError);
+    } else {
+      res.removeListener?.('error', onResponseError);
+    }
+  };
+  req.on('close', onClientClosed);
+  req.on('error', onClientError);
+  res.on('error', onResponseError);
 }
 
 incidentService.on('update', (incidents) => {
   const payload = JSON.stringify({ incidents });
   for (const client of sseClients) {
-    client.res.write(`data: ${payload}\n\n`);
+    if (client.res.writableEnded || client.res.destroyed) {
+      cleanupSseClient(client, 'stream-ended');
+      continue;
+    }
+    try {
+      client.res.write(`data: ${payload}\n\n`);
+    } catch (error) {
+      logger.warn('failed to deliver SSE payload', { error: error.message });
+      cleanupSseClient(client, 'write-failed');
+    }
   }
 });
 

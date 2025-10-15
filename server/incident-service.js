@@ -33,6 +33,32 @@ function pickAudioFeed(sector = '') {
   return AUDIO_FEEDS.default;
 }
 
+function safeTimestamp(value) {
+  const parsed = Date.parse(value);
+  if (Number.isFinite(parsed)) {
+    return new Date(parsed).toISOString();
+  }
+  return value || null;
+}
+
+function buildIncidentSignature(incident) {
+  const timelineFingerprint = (incident.timeline || [])
+    .map((step) => `${step.code || ''}:${safeTimestamp(step.timestamp) || ''}`)
+    .join('|');
+  const unitsFingerprint = (incident.units || [])
+    .map((unit) => `${unit.role || ''}:${unit.unit_id || ''}`)
+    .join('|');
+  return [
+    incident.status || '',
+    incident.summary || '',
+    incident.severity || '',
+    incident.subgroup || '',
+    timelineFingerprint,
+    unitsFingerprint,
+    incident.confidence ?? ''
+  ].join('||');
+}
+
 function buildTimeline(record) {
   const timeline = [];
   if (record.event_received_date_time) {
@@ -118,7 +144,7 @@ function normaliseRecord(record) {
       transcript_url: null,
       transcript: []
     },
-    updated_at: new Date().toISOString(),
+    updated_at: null,
     confidence,
     source: {
       name: SOURCE_NAME,
@@ -172,6 +198,7 @@ class IncidentService extends EventEmitter {
     };
     this.incidents = new Map();
     this.interval = null;
+    this.signatures = new Map();
   }
 
   start() {
@@ -222,15 +249,19 @@ class IncidentService extends EventEmitter {
     }
 
     const payload = await response.json();
+    if (!Array.isArray(payload)) {
+      throw new Error('Unexpected response shape from data feed');
+    }
     const fetchedAt = new Date().toISOString();
     const newIncidents = new Map();
+    const newSignatures = new Map();
+    let changed = false;
     for (const record of payload) {
       const normalised = normaliseRecord(record);
       if (!normalised) continue;
-      normalised.updated_at = fetchedAt;
-      normalised.confidence_updated_at = fetchedAt;
       normalised.source.feed = this.options.endpoint;
       const previous = this.incidents.get(normalised.incident_id);
+      const previousSignature = this.signatures.get(normalised.incident_id);
       normalised.ingested_at = previous?.ingested_at || fetchedAt;
       normalised.provenance = {
         feed: this.options.endpoint,
@@ -244,11 +275,32 @@ class IncidentService extends EventEmitter {
       } else {
         normalised.latest_update = { code: 'received', label: 'Call received', timestamp: normalised.time_received };
       }
+      normalised.updated_at = normalised.latest_update?.timestamp || normalised.time_received;
+      const signature = buildIncidentSignature(normalised);
+      newSignatures.set(normalised.incident_id, signature);
+      if (previous && previousSignature === signature) {
+        normalised.updated_at = previous.updated_at;
+        normalised.confidence_updated_at = previous.confidence_updated_at || fetchedAt;
+        normalised.latest_update = previous.latest_update;
+      } else {
+        normalised.confidence_updated_at = fetchedAt;
+        if (!previous || previousSignature !== signature) {
+          changed = true;
+        }
+      }
       newIncidents.set(normalised.incident_id, normalised);
     }
 
+    if (this.incidents.size !== newIncidents.size) {
+      changed = true;
+    }
+
     this.incidents = newIncidents;
-    this.emit('update', this.getSnapshot());
+    this.signatures = newSignatures;
+
+    if (changed) {
+      this.emit('update', this.getSnapshot());
+    }
   }
 }
 
