@@ -8,6 +8,8 @@ const SEVERITY_MAPPINGS = [
   { pattern: /MEDICAL|AID|EMS|INJURY|OVERDOSE|RESCUE/i, severity: 'medical' }
 ];
 
+const SOURCE_NAME = 'Seattle Police Department CAD (Socrata)';
+
 const AUDIO_FEEDS = {
   default: 'https://broadcastify.cdnstream1.com/35248',
   north: 'https://broadcastify.cdnstream1.com/35568',
@@ -92,6 +94,9 @@ function normaliseRecord(record) {
   }
 
   const severity = determineSeverity(record.event_clearance_description, record.event_clearance_subgroup);
+  const timeline = buildTimeline(record);
+
+  const confidence = calculateConfidence(record, severity, timeline);
 
   return {
     incident_id: incidentId,
@@ -107,14 +112,52 @@ function normaliseRecord(record) {
     severity,
     subgroup: record.event_clearance_subgroup || 'Uncategorised',
     units: extractUnits(record),
-    timeline: buildTimeline(record),
+    timeline,
     audio: {
       stream_url: pickAudioFeed(record.district_sector || ''),
       transcript_url: null,
       transcript: []
     },
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
+    confidence,
+    source: {
+      name: SOURCE_NAME,
+      feed: null,
+      sector: record.district_sector || null
+    }
   };
+}
+
+function calculateConfidence(record, severity, timeline) {
+  let score = 55;
+
+  if (severity === 'violent') {
+    score += 12;
+  } else if (severity === 'medical') {
+    score += 8;
+  } else if (severity === 'property') {
+    score += 6;
+  }
+
+  if (Array.isArray(timeline) && timeline.length > 0) {
+    score += 6;
+    if (timeline.length >= 2) score += 4;
+    if (timeline.length >= 3) score += 3;
+  }
+
+  if (record.event_clearance_disposition && record.event_clearance_disposition !== 'Pending') {
+    score += 8;
+  }
+
+  if (record.event_clearance_group) {
+    score += 4;
+  }
+
+  if (record.event_clearance_code) {
+    score += 3;
+  }
+
+  return Math.max(40, Math.min(95, Math.round(score)));
 }
 
 class IncidentService extends EventEmitter {
@@ -179,11 +222,22 @@ class IncidentService extends EventEmitter {
     }
 
     const payload = await response.json();
+    const fetchedAt = new Date().toISOString();
     const newIncidents = new Map();
     for (const record of payload) {
       const normalised = normaliseRecord(record);
       if (!normalised) continue;
-      normalised.updated_at = new Date().toISOString();
+      normalised.updated_at = fetchedAt;
+      normalised.confidence_updated_at = fetchedAt;
+      normalised.source.feed = this.options.endpoint;
+      const previous = this.incidents.get(normalised.incident_id);
+      normalised.ingested_at = previous?.ingested_at || fetchedAt;
+      normalised.provenance = {
+        feed: this.options.endpoint,
+        fetched_at: fetchedAt,
+        lookback_minutes: this.options.lookbackMinutes,
+        limit: this.options.limit
+      };
       const timeline = normalised.timeline;
       if (timeline.length > 0) {
         normalised.latest_update = timeline[timeline.length - 1];

@@ -27,7 +27,9 @@ export function LiveFeed({ incidents, filters, paused }: LiveFeedProps) {
         return false;
       }
       if (query) {
-        const text = `${incident.title} ${incident.location} ${incident.description ?? ''}`.toLowerCase();
+        const text = `${incident.title} ${incident.location} ${incident.description ?? ''} ${incident.source.name} ${
+          incident.status ?? ''
+        }`.toLowerCase();
         if (!text.includes(query)) {
           return false;
         }
@@ -55,17 +57,22 @@ export function LiveFeed({ incidents, filters, paused }: LiveFeedProps) {
               className="group rounded-xl border border-slate-800/70 bg-slate-900/50 p-4 shadow-sm backdrop-blur hover:border-slate-600"
             >
               <header className="flex items-start justify-between gap-3">
-                <div>
+                <div className="space-y-1">
                   <h3 className="text-base font-semibold text-white">{incident.title}</h3>
-                  <p className="text-xs uppercase tracking-wide text-slate-400">{incident.category}</p>
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wide text-slate-400">
+                    <span className="rounded-full bg-slate-800/80 px-2 py-0.5 text-slate-200">{incident.category}</span>
+                    {incident.status && (
+                      <span className="rounded-full bg-indigo-500/20 px-2 py-0.5 text-indigo-200">{incident.status}</span>
+                    )}
+                  </div>
                 </div>
-                <span className={`text-xs font-semibold ${severityColors[incident.severity] ?? 'text-slate-300'}`}>
+                <span className={`rounded-full px-2 py-1 text-xs font-semibold ${severityColors[incident.severity] ?? 'text-slate-300'}`}>
                   {incident.severity}
                 </span>
               </header>
               <p className="mt-2 text-sm text-slate-300">{incident.description ?? 'No additional details provided.'}</p>
-              <footer className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
-                <span>{new Date(incident.timestamp).toLocaleTimeString()}</span>
+              <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-400">
+                <span>{new Date(incident.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                 <span className="flex items-center gap-1">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -77,11 +84,68 @@ export function LiveFeed({ incidents, filters, paused }: LiveFeedProps) {
                   </svg>
                   {incident.location}
                 </span>
-              </footer>
+                <span className="flex items-center gap-2 text-slate-300">
+                  <div className="relative h-2 w-24 overflow-hidden rounded-full bg-slate-800/80">
+                    <div
+                      className="absolute inset-y-0 left-0 bg-emerald-400/80"
+                      style={{ width: `${Math.min(100, Math.max(0, incident.confidence))}%` }}
+                    />
+                  </div>
+                  <span className="font-semibold text-emerald-300">{incident.confidence}% confidence</span>
+                </span>
+                <span className="flex items-center gap-1 text-slate-300">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="h-4 w-4 text-sky-400"
+                  >
+                    <path d="M12 2a7 7 0 00-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 00-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
+                  </svg>
+                  {incident.source.name}
+                </span>
+                {incident.ingestedAt && <span>First seen {formatRelativeTime(incident.ingestedAt)}</span>}
+              </div>
+              {incident.timeline.length > 0 && (
+                <div className="mt-3 rounded-xl border border-slate-800/60 bg-slate-950/40 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Recent activity</p>
+                  <ol className="mt-2 space-y-2">
+                    {incident.timeline.slice(-4).map((entry, index, array) => (
+                      <li key={`${incident.id}-${entry.timestamp}-${index}`} className="flex items-center gap-3 text-xs text-slate-300">
+                        <span className="font-semibold text-slate-200">
+                          {entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                        </span>
+                        <span className="text-slate-400">{entry.label ?? entry.code ?? 'Updated'}</span>
+                        {index === array.length - 1 && (
+                          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
+                            Latest
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
             </motion.article>
           ))}
         </AnimatePresence>
       </div>
     </div>
   );
+}
+
+function formatRelativeTime(timestamp: string) {
+  const parsed = new Date(timestamp);
+  if (Number.isNaN(parsed.getTime())) {
+    return 'recently';
+  }
+
+  const diffMs = Date.now() - parsed.getTime();
+  const minutes = Math.round(diffMs / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes} min${minutes === 1 ? '' : 's'} ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hr${hours === 1 ? '' : 's'} ago`;
+  const days = Math.round(hours / 24);
+  return `${days} day${days === 1 ? '' : 's'} ago`;
 }

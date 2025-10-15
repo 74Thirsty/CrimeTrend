@@ -21,6 +21,8 @@ CrimeTrend is a real-time crime intelligence stack built around a lightweight No
 - **Trend analytics:** Live-updating area and bar charts summarise volume over time and category distribution via Recharts.
 - **Alerting:** Automatic detection of geographic clusters raises a “Hot zone” banner and draws proportional overlays on the map.
 - **Persistent UX:** Filters (query, category, severity, timeframe, heatmap toggle) persist in `localStorage`, and the entire layout adapts fluidly from desktop to tablet widths.
+- **Confidence & provenance metadata:** Each incident carries a calculated confidence score, first-seen timestamp, and source feed details for quick triage.
+- **Saved analyst presets:** Store and reuse named filter configurations for rapid context switching between beats or missions.
 
 ## Getting Started
 

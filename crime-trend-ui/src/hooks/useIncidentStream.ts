@@ -2,6 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import type { FilterState } from '../components/Filters';
 
+type TimelineEntry = {
+  code?: string;
+  label?: string;
+  timestamp?: string;
+};
+
 export interface Incident {
   id: string;
   title: string;
@@ -14,6 +20,14 @@ export interface Incident {
     lat: number;
     lng: number;
   };
+  confidence: number;
+  source: {
+    name: string;
+    feed?: string;
+  };
+  status?: string;
+  timeline: TimelineEntry[];
+  ingestedAt?: string;
 }
 
 interface RawIncident {
@@ -32,6 +46,18 @@ interface RawIncident {
   latest_update?: {
     timestamp?: string;
   };
+  confidence?: number;
+  confidence_updated_at?: string;
+  source?: {
+    name?: string;
+    feed?: string | null;
+  } | string;
+  provenance?: {
+    feed?: string;
+    fetched_at?: string;
+  };
+  timeline?: TimelineEntry[];
+  ingested_at?: string;
 }
 
 export interface IncidentStats {
@@ -111,6 +137,13 @@ function normaliseIncident(raw: RawIncident): Incident | null {
   const title = raw.call_type?.trim() || raw.summary?.trim() || 'Incident';
   const description = raw.summary?.trim() && raw.summary.trim() !== title ? raw.summary.trim() : undefined;
   const timestamp = raw.latest_update?.timestamp || raw.time_received || new Date().toISOString();
+  const confidence = typeof raw.confidence === 'number' ? Math.min(100, Math.max(0, Math.round(raw.confidence))) : 60;
+  const sourceName = typeof raw.source === 'string' ? raw.source : raw.source?.name ?? 'Unknown feed';
+  const sourceFeed = typeof raw.source === 'object' && raw.source ? raw.source.feed ?? undefined : raw.provenance?.feed;
+  const timeline: TimelineEntry[] = Array.isArray(raw.timeline)
+    ? raw.timeline.filter((entry) => Boolean(entry?.timestamp))
+    : [];
+  const ingestedAt = raw.ingested_at || raw.provenance?.fetched_at;
 
   return {
     id: raw.incident_id,
@@ -123,7 +156,15 @@ function normaliseIncident(raw: RawIncident): Incident | null {
     coordinates: {
       lat,
       lng
-    }
+    },
+    confidence,
+    source: {
+      name: sourceName,
+      feed: sourceFeed ?? undefined
+    },
+    status: raw.status,
+    timeline,
+    ingestedAt
   };
 }
 
