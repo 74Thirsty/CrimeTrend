@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, CircleMarker, Tooltip, LayersControl, LayerGro
 import 'leaflet/dist/leaflet.css';
 import type { HotZone, Incident } from '../hooks/useIncidentStream';
 import type { FilterState } from './Filters';
+import { ALL_STATE_OPTION } from '../constants/states';
 
 interface MapViewProps {
   incidents: Incident[];
@@ -25,6 +26,11 @@ export function MapView({ incidents, filters, hotZones = [] }: MapViewProps) {
       }
       if (filters.severities.size > 0 && !filters.severities.has(incident.severity)) {
         return false;
+      }
+      if (filters.state !== ALL_STATE_OPTION) {
+        if (!incident.state || incident.state.toUpperCase() !== filters.state) {
+          return false;
+        }
       }
       return true;
     });
@@ -61,6 +67,7 @@ export function MapView({ incidents, filters, hotZones = [] }: MapViewProps) {
                       <div className="space-y-1 text-xs">
                         <p className="font-semibold text-white">{incident.title}</p>
                         <p className="text-slate-300">{incident.location}</p>
+                        {incident.state && <p className="text-slate-400">{incident.state}</p>}
                         <p className="text-slate-400">{incident.severity.toUpperCase()}</p>
                         <p className="text-slate-400">{incident.confidence}% confidence</p>
                         <p className="text-slate-500">{incident.source.name}</p>

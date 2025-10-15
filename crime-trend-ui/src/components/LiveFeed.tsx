@@ -29,7 +29,7 @@ export function LiveFeed({ incidents, filters, paused }: LiveFeedProps) {
       if (query) {
         const text = `${incident.title} ${incident.location} ${incident.description ?? ''} ${incident.source.name} ${
           incident.status ?? ''
-        }`.toLowerCase();
+        } ${incident.state ?? ''}`.toLowerCase();
         if (!text.includes(query)) {
           return false;
         }
@@ -61,6 +61,9 @@ export function LiveFeed({ incidents, filters, paused }: LiveFeedProps) {
                   <h3 className="text-base font-semibold text-white">{incident.title}</h3>
                   <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wide text-slate-400">
                     <span className="rounded-full bg-slate-800/80 px-2 py-0.5 text-slate-200">{incident.category}</span>
+                    {incident.state && (
+                      <span className="rounded-full bg-slate-800/60 px-2 py-0.5 text-slate-200">{incident.state}</span>
+                    )}
                     {incident.status && (
                       <span className="rounded-full bg-indigo-500/20 px-2 py-0.5 text-indigo-200">{incident.status}</span>
                     )}
@@ -83,6 +86,7 @@ export function LiveFeed({ incidents, filters, paused }: LiveFeedProps) {
                     <path d="M12 2.25c-4.97 0-9 3.77-9 8.42 0 2.6 1.3 4.96 3.34 6.51l5.07 4.03c.43.34 1.05.34 1.48 0l5.07-4.03A8.28 8.28 0 0021 10.67c0-4.65-4.03-8.42-9-8.42zm0 10.45a2.03 2.03 0 110-4.06 2.03 2.03 0 010 4.06z" />
                   </svg>
                   {incident.location}
+                  {incident.state ? `, ${incident.state}` : ''}
                 </span>
                 <span className="flex items-center gap-2 text-slate-300">
                   <div className="relative h-2 w-24 overflow-hidden rounded-full bg-slate-800/80">

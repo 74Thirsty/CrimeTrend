@@ -2,6 +2,162 @@ const { EventEmitter } = require('events');
 const logger = require('./logger');
 
 const DEFAULT_ENDPOINT = 'https://data.seattle.gov/resource/kzjm-xkqj.json';
+const DEFAULT_FALLBACK_STATE = 'WA';
+
+const STATE_NAME_TO_CODE = {
+  ALABAMA: 'AL',
+  ALASKA: 'AK',
+  ARIZONA: 'AZ',
+  ARKANSAS: 'AR',
+  CALIFORNIA: 'CA',
+  COLORADO: 'CO',
+  CONNECTICUT: 'CT',
+  DELAWARE: 'DE',
+  FLORIDA: 'FL',
+  GEORGIA: 'GA',
+  HAWAII: 'HI',
+  IDAHO: 'ID',
+  ILLINOIS: 'IL',
+  INDIANA: 'IN',
+  IOWA: 'IA',
+  KANSAS: 'KS',
+  KENTUCKY: 'KY',
+  LOUISIANA: 'LA',
+  MAINE: 'ME',
+  MARYLAND: 'MD',
+  MASSACHUSETTS: 'MA',
+  MICHIGAN: 'MI',
+  MINNESOTA: 'MN',
+  MISSISSIPPI: 'MS',
+  MISSOURI: 'MO',
+  MONTANA: 'MT',
+  NEBRASKA: 'NE',
+  NEVADA: 'NV',
+  'NEW HAMPSHIRE': 'NH',
+  'NEW JERSEY': 'NJ',
+  'NEW MEXICO': 'NM',
+  'NEW YORK': 'NY',
+  'NORTH CAROLINA': 'NC',
+  'NORTH DAKOTA': 'ND',
+  OHIO: 'OH',
+  OKLAHOMA: 'OK',
+  OREGON: 'OR',
+  PENNSYLVANIA: 'PA',
+  'RHODE ISLAND': 'RI',
+  'SOUTH CAROLINA': 'SC',
+  'SOUTH DAKOTA': 'SD',
+  TENNESSEE: 'TN',
+  TEXAS: 'TX',
+  UTAH: 'UT',
+  VERMONT: 'VT',
+  VIRGINIA: 'VA',
+  WASHINGTON: 'WA',
+  'WEST VIRGINIA': 'WV',
+  WISCONSIN: 'WI',
+  WYOMING: 'WY',
+  'DISTRICT OF COLUMBIA': 'DC',
+  'WASHINGTON DC': 'DC',
+  'WASHINGTON D C': 'DC',
+  'WASHINGTON D.C': 'DC',
+  'WASHINGTON, D.C': 'DC',
+  'WASHINGTON, D.C.': 'DC',
+  'WASHINGTON, DC': 'DC',
+  'WASHINGTON D.C.': 'DC',
+  'D.C': 'DC',
+  'D.C.': 'DC',
+  'PUERTO RICO': 'PR',
+  'NORTHERN MARIANA ISLANDS': 'MP',
+  'AMERICAN SAMOA': 'AS',
+  GUAM: 'GU',
+  'UNITED STATES VIRGIN ISLANDS': 'VI',
+  'U.S. VIRGIN ISLANDS': 'VI',
+  'US VIRGIN ISLANDS': 'VI',
+  'VIRGIN ISLANDS': 'VI'
+};
+
+const STATE_CODE_SET = new Set(Object.values(STATE_NAME_TO_CODE));
+STATE_CODE_SET.add('DC');
+STATE_CODE_SET.add('PR');
+STATE_CODE_SET.add('MP');
+STATE_CODE_SET.add('AS');
+STATE_CODE_SET.add('GU');
+STATE_CODE_SET.add('VI');
+
+const STATE_SEPARATOR_REGEX = /[\/,;|-]/;
+
+function normaliseStateValue(value) {
+  if (!value) {
+    return null;
+  }
+  const trimmed = String(value).trim();
+  if (!trimmed) {
+    return null;
+  }
+  const collapsed = trimmed.toUpperCase().replace(/\./g, '').replace(/\s+/g, ' ').trim();
+  if (collapsed.length === 2 && STATE_CODE_SET.has(collapsed)) {
+    return collapsed;
+  }
+
+  const withoutDecorators = collapsed.replace(/^STATE OF\s+/, '').replace(/\s+STATE$/, '');
+  if (withoutDecorators.length === 2 && STATE_CODE_SET.has(withoutDecorators)) {
+    return withoutDecorators;
+  }
+
+  const mapped =
+    STATE_NAME_TO_CODE[withoutDecorators] ||
+    STATE_NAME_TO_CODE[collapsed] ||
+    STATE_NAME_TO_CODE[withoutDecorators.replace(/\s+/g, ' ')];
+  if (mapped) {
+    return mapped;
+  }
+
+  if (STATE_SEPARATOR_REGEX.test(withoutDecorators)) {
+    const parts = withoutDecorators
+      .split(STATE_SEPARATOR_REGEX)
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (parts.length > 1) {
+      for (const part of parts) {
+        const code = normaliseStateValue(part);
+        if (code) {
+          return code;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+function resolveState(record, fallbackState) {
+  const location = record.incident_location || {};
+  const candidates = [
+    location.state,
+    location.state_code,
+    location.state_abbr,
+    location.state_name,
+    record.state,
+    record.state_code,
+    record.state_abbr,
+    record.state_name,
+    record.jurisdiction_state,
+    record.geo_state,
+    record.us_state,
+    record.jurisdiction,
+    location.address,
+    record.hundred_block_location
+  ];
+
+  for (const candidate of candidates) {
+    const code = normaliseStateValue(candidate);
+    if (code) {
+      return code;
+    }
+  }
+
+  const fallbackCode = normaliseStateValue(fallbackState || DEFAULT_FALLBACK_STATE);
+  return fallbackCode;
+}
 const PRIMARY_TIME_FIELDS = [
   'event_received_date_time',
   'event_dispatched_date_time',
@@ -60,6 +216,7 @@ function buildIncidentSignature(incident) {
     incident.summary || '',
     incident.severity || '',
     incident.subgroup || '',
+    incident.location?.state || '',
     timelineFingerprint,
     unitsFingerprint,
     incident.confidence ?? ''
@@ -113,7 +270,7 @@ function extractUnits(record) {
   return units;
 }
 
-function normaliseRecord(record) {
+function normaliseRecord(record, fallbackState) {
   const incidentId = record.cad_event_number || record.general_offense_number;
   if (!incidentId) {
     return null;
@@ -125,6 +282,8 @@ function normaliseRecord(record) {
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
     return null;
   }
+
+  const stateCode = resolveState(record, fallbackState);
 
   const severity = determineSeverity(record.event_clearance_description, record.event_clearance_subgroup);
   const timeline = buildTimeline(record);
@@ -138,7 +297,8 @@ function normaliseRecord(record) {
     location: {
       latitude: lat,
       longitude: lon,
-      address: record.hundred_block_location || record.district_sector || 'Unknown address'
+      address: record.hundred_block_location || record.district_sector || 'Unknown address',
+      state: stateCode
     },
     time_received: record.event_received_date_time || record.event_clearance_date || record.datetime,
     status: record.event_clearance_disposition || 'Pending',
@@ -153,6 +313,7 @@ function normaliseRecord(record) {
     },
     updated_at: null,
     confidence,
+    state: stateCode,
     source: {
       name: SOURCE_NAME,
       feed: null,
@@ -201,7 +362,10 @@ class IncidentService extends EventEmitter {
       limit: options.limit ?? 200,
       lookbackMinutes: options.lookbackMinutes ?? 120,
       refreshIntervalMs: options.refreshIntervalMs ?? 15000,
-      appToken: options.appToken || process.env.SOCRATA_APP_TOKEN || null
+      appToken: options.appToken || process.env.SOCRATA_APP_TOKEN || null,
+      defaultState:
+        normaliseStateValue(options.defaultState || process.env.DEFAULT_STATE) ||
+        normaliseStateValue(DEFAULT_FALLBACK_STATE)
     };
     this.incidents = new Map();
     this.interval = null;
@@ -342,7 +506,7 @@ class IncidentService extends EventEmitter {
     const newSignatures = new Map();
     let changed = false;
     for (const record of payload) {
-      const normalised = normaliseRecord(record);
+      const normalised = normaliseRecord(record, this.options.defaultState);
       if (!normalised) continue;
       normalised.source.feed = this.options.endpoint;
       const previous = this.incidents.get(normalised.incident_id);

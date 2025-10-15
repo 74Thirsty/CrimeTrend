@@ -2,6 +2,7 @@ import { Dispatch, ReactNode, SetStateAction, useEffect } from 'react';
 import { Category, FilterState, Severity, Timeframe } from './Filters';
 import { IncidentStats } from '../hooks/useIncidentStream';
 import { motion } from 'framer-motion';
+import { ALL_STATE_OPTION, isValidStateFilter } from '../constants/states';
 
 const CATEGORY_VALUES: readonly Category[] = ['violent', 'property', 'traffic', 'other'] as const;
 const SEVERITY_VALUES: readonly Severity[] = ['low', 'medium', 'high', 'critical'] as const;
@@ -52,6 +53,7 @@ export function LayoutShell({
           const severities = Array.isArray(parsed.severities)
             ? parsed.severities.filter(isSeverity)
             : Array.from(prev.severities);
+          const state = isValidStateFilter(parsed.state) ? parsed.state : prev.state ?? ALL_STATE_OPTION;
 
           return {
             ...prev,
@@ -59,7 +61,8 @@ export function LayoutShell({
             timeframe: isTimeframe(parsed.timeframe) ? parsed.timeframe : prev.timeframe,
             heatmap: typeof parsed.heatmap === 'boolean' ? parsed.heatmap : prev.heatmap,
             categories: new Set(categories),
-            severities: new Set(severities)
+            severities: new Set(severities),
+            state
           };
         });
       } catch (error) {
@@ -72,7 +75,8 @@ export function LayoutShell({
     const payload = JSON.stringify({
       ...filters,
       categories: Array.from(filters.categories),
-      severities: Array.from(filters.severities)
+      severities: Array.from(filters.severities),
+      state: filters.state
     });
     localStorage.setItem(STORAGE_KEY, payload);
   }, [filters]);
