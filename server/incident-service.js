@@ -133,7 +133,7 @@ function normaliseRecord(record) {
       longitude: lon,
       address: record.hundred_block_location || record.district_sector || 'Unknown address'
     },
-    time_received: record.event_received_date_time || record.event_clearance_date,
+    time_received: record.event_received_date_time || record.event_clearance_date || record.datetime,
     status: record.event_clearance_disposition || 'Pending',
     severity,
     subgroup: record.event_clearance_subgroup || 'Uncategorised',
@@ -231,8 +231,8 @@ class IncidentService extends EventEmitter {
     const since = new Date(now.getTime() - this.options.lookbackMinutes * 60000);
     const params = new URLSearchParams();
     params.set('$limit', String(this.options.limit));
-    params.set('$order', 'event_received_date_time DESC');
-    params.set('$where', `event_received_date_time >= '${since.toISOString()}'`);
+    params.set('$order', 'datetime DESC');
+    params.set('$where', `datetime >= '${since.toISOString()}'`);
 
     const url = `${this.options.endpoint}?${params.toString()}`;
     const headers = { 'Accept': 'application/json' };
