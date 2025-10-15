@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import type { FilterState } from '../components/Filters';
+import { ALL_STATE_OPTION, normaliseStateCode } from '../constants/states';
 
 type TimelineEntry = {
   code?: string;
@@ -28,6 +29,7 @@ export interface Incident {
   status?: string;
   timeline: TimelineEntry[];
   ingestedAt?: string;
+  state?: string;
 }
 
 interface RawIncident {
@@ -38,6 +40,7 @@ interface RawIncident {
     latitude?: number | string;
     longitude?: number | string;
     address?: string;
+    state?: string | null;
   };
   time_received?: string;
   status?: string;
@@ -58,6 +61,7 @@ interface RawIncident {
   };
   timeline?: TimelineEntry[];
   ingested_at?: string;
+  state?: string;
 }
 
 export interface IncidentStats {
@@ -144,6 +148,7 @@ function normaliseIncident(raw: RawIncident): Incident | null {
     ? raw.timeline.filter((entry) => Boolean(entry?.timestamp))
     : [];
   const ingestedAt = raw.ingested_at || raw.provenance?.fetched_at;
+  const state = normaliseStateCode(raw.location?.state ?? raw.state ?? null) ?? undefined;
 
   return {
     id: raw.incident_id,
@@ -164,7 +169,8 @@ function normaliseIncident(raw: RawIncident): Incident | null {
     },
     status: raw.status,
     timeline,
-    ingestedAt
+    ingestedAt,
+    state
   };
 }
 
@@ -248,7 +254,17 @@ export function useIncidentStream(filters: FilterState) {
       }
     })();
 
-    const recent = incidents.filter((incident) => new Date(incident.timestamp).getTime() >= limitTimestamp);
+    const recent = incidents
+      .filter((incident) => {
+        if (filters.state === ALL_STATE_OPTION) {
+          return true;
+        }
+        if (!incident.state) {
+          return false;
+        }
+        return incident.state.toUpperCase() === filters.state;
+      })
+      .filter((incident) => new Date(incident.timestamp).getTime() >= limitTimestamp);
     recent.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     const buckets = new Map<
@@ -299,7 +315,7 @@ export function useIncidentStream(filters: FilterState) {
         categories
       }
     };
-  }, [incidents, filters.timeframe]);
+  }, [incidents, filters.timeframe, filters.state]);
 
   return {
     incidents: filteredIncidents,

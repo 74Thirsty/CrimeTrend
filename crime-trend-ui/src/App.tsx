@@ -7,6 +7,7 @@ import { Filters, FilterState, SavedFilterPreset, SavePresetResult, Category, Se
 import { useIncidentStream } from './hooks/useIncidentStream';
 import { HotZoneAlerts } from './components/HotZoneAlerts';
 import { LayoutShell } from './components/LayoutShell';
+import { ALL_STATE_OPTION, isValidStateFilter } from './constants/states';
 
 const PRESET_STORAGE_KEY = 'crime-trend-filter-presets-v2';
 const CATEGORY_VALUES: readonly Category[] = ['violent', 'property', 'traffic', 'other'] as const;
@@ -35,6 +36,7 @@ function sanitisePreset(candidate: unknown): SavedFilterPreset | null {
     : [];
   const timeframe = filters.timeframe && TIMEFRAME_VALUES.includes(filters.timeframe) ? filters.timeframe : '24h';
   const heatmap = typeof filters.heatmap === 'boolean' ? filters.heatmap : false;
+  const state = isValidStateFilter(filters.state) ? filters.state : ALL_STATE_OPTION;
 
   return {
     id: typeof raw.id === 'string' ? raw.id : createPresetId(),
@@ -44,7 +46,8 @@ function sanitisePreset(candidate: unknown): SavedFilterPreset | null {
       categories,
       severities,
       timeframe,
-      heatmap
+      heatmap,
+      state
     }
   };
 }
@@ -55,7 +58,8 @@ function App() {
     categories: new Set(),
     severities: new Set(),
     timeframe: '24h',
-    heatmap: false
+    heatmap: false,
+    state: ALL_STATE_OPTION
   });
   const [savedPresets, setSavedPresets] = useState<SavedFilterPreset[]>(() => {
     if (typeof window === 'undefined') {
@@ -94,7 +98,8 @@ function App() {
       categories: Array.from(state.categories) as Category[],
       severities: Array.from(state.severities) as Severity[],
       timeframe: state.timeframe,
-      heatmap: state.heatmap
+      heatmap: state.heatmap,
+      state: state.state
     }),
     []
   );
@@ -136,7 +141,8 @@ function App() {
         categories: new Set(preset.filters.categories),
         severities: new Set(preset.filters.severities),
         timeframe: preset.filters.timeframe,
-        heatmap: preset.filters.heatmap
+        heatmap: preset.filters.heatmap,
+        state: preset.filters.state
       });
     },
     [savedPresets]

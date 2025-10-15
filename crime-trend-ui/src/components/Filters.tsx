@@ -1,5 +1,6 @@
 import { Dispatch, SetStateAction, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
+import { ALL_STATE_OPTION, US_STATES } from '../constants/states';
 
 export type Category = 'violent' | 'property' | 'traffic' | 'other';
 export type Severity = 'low' | 'medium' | 'high' | 'critical';
@@ -11,6 +12,7 @@ export interface FilterState {
   severities: Set<Severity>;
   timeframe: Timeframe;
   heatmap: boolean;
+  state: string;
 }
 
 export interface SavedFilterPreset {
@@ -22,6 +24,7 @@ export interface SavedFilterPreset {
     severities: Severity[];
     timeframe: Timeframe;
     heatmap: boolean;
+    state: string;
   };
 }
 
@@ -124,6 +127,30 @@ export function Filters({
           onChange={(event) => setFilters((prev) => ({ ...prev, query: event.target.value }))}
           className="w-full rounded-lg border border-slate-700/60 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 shadow-sm focus:border-emerald-400/80 focus:outline-none focus:ring focus:ring-emerald-500/30"
         />
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <label htmlFor="state-select" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+          State
+        </label>
+        <select
+          id="state-select"
+          value={filters.state}
+          onChange={(event) =>
+            setFilters((prev) => ({
+              ...prev,
+              state: event.target.value
+            }))
+          }
+          className="w-full rounded-lg border border-slate-700/60 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 shadow-sm focus:border-emerald-400/80 focus:outline-none focus:ring focus:ring-emerald-500/30"
+        >
+          <option value={ALL_STATE_OPTION}>Nationwide (all states)</option>
+          {US_STATES.map((state) => (
+            <option key={state.code} value={state.code}>
+              {state.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
