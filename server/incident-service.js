@@ -231,8 +231,9 @@ class IncidentService extends EventEmitter {
     const since = new Date(now.getTime() - this.options.lookbackMinutes * 60000);
     const params = new URLSearchParams();
     params.set('$limit', String(this.options.limit));
-    params.set('$order', 'datetime DESC');
-    params.set('$where', `datetime >= '${since.toISOString()}'`);
+    const primaryTimeField = 'event_received_date_time';
+    params.set('$order', `${primaryTimeField} DESC`);
+    params.set('$where', `${primaryTimeField} >= '${since.toISOString()}'`);
 
     const url = `${this.options.endpoint}?${params.toString()}`;
     const headers = { 'Accept': 'application/json' };
