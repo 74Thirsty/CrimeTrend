@@ -16,6 +16,24 @@ export interface Incident {
   };
 }
 
+interface RawIncident {
+  incident_id: string;
+  call_type?: string;
+  summary?: string;
+  location?: {
+    latitude?: number | string;
+    longitude?: number | string;
+    address?: string;
+  };
+  time_received?: string;
+  status?: string;
+  severity?: string;
+  subgroup?: string;
+  latest_update?: {
+    timestamp?: string;
+  };
+}
+
 export interface IncidentStats {
   total: number;
   categories: Record<string, number>;
@@ -33,26 +51,110 @@ export interface HotZone {
 
 const STREAM_URL = '/stream/incidents';
 
+function parseCoordinate(value?: number | string): number | null {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function deriveCategory(raw: RawIncident): Incident['category'] {
+  const haystack = `${raw.call_type ?? ''} ${raw.summary ?? ''} ${raw.subgroup ?? ''}`.toLowerCase();
+  if (/(traffic|collision|accident|vehicle|dui|road|spd - traffic)/.test(haystack)) {
+    return 'traffic';
+  }
+  switch (raw.severity) {
+    case 'violent':
+      return 'violent';
+    case 'property':
+      return 'property';
+    default:
+      return 'other';
+  }
+}
+
+function deriveSeverity(raw: RawIncident, category: Incident['category']): Incident['severity'] {
+  if (category === 'traffic') {
+    return /(injury|fatal|rollover)/i.test(`${raw.summary ?? ''}`) ? 'high' : 'medium';
+  }
+
+  switch (raw.severity) {
+    case 'violent':
+      return 'critical';
+    case 'property':
+      return 'medium';
+    case 'medical':
+      return 'high';
+    default:
+      return 'low';
+  }
+}
+
+function normaliseIncident(raw: RawIncident): Incident | null {
+  if (!raw.incident_id) {
+    return null;
+  }
+
+  const lat = parseCoordinate(raw.location?.latitude);
+  const lng = parseCoordinate(raw.location?.longitude);
+
+  if (lat == null || lng == null) {
+    return null;
+  }
+
+  const category = deriveCategory(raw);
+  const severity = deriveSeverity(raw, category);
+  const title = raw.call_type?.trim() || raw.summary?.trim() || 'Incident';
+  const description = raw.summary?.trim() && raw.summary.trim() !== title ? raw.summary.trim() : undefined;
+  const timestamp = raw.latest_update?.timestamp || raw.time_received || new Date().toISOString();
+
+  return {
+    id: raw.incident_id,
+    title,
+    category,
+    severity,
+    timestamp,
+    location: raw.location?.address?.trim() || 'Unknown location',
+    description,
+    coordinates: {
+      lat,
+      lng
+    }
+  };
+}
+
+function mapIncidents(rawIncidents: RawIncident[] | undefined): Incident[] {
+  if (!rawIncidents || rawIncidents.length === 0) {
+    return [];
+  }
+
+  return rawIncidents
+    .map((incident) => normaliseIncident(incident))
+    .filter((incident): incident is Incident => Boolean(incident))
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+}
+
 export function useIncidentStream(filters: FilterState) {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [paused, setPaused] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
 
-  const handleMessage = useCallback(
-    (event: MessageEvent) => {
-      const data = JSON.parse(event.data) as { incidents: Incident[] };
-      setIncidents(data.incidents);
-    },
-    []
-  );
+  const handleMessage = useCallback((event: MessageEvent) => {
+    const data = JSON.parse(event.data) as { incidents?: RawIncident[] };
+    setIncidents(mapIncidents(data.incidents));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     axios
-      .get<{ incidents: Incident[] }>('/api/incidents')
+      .get<{ incidents?: RawIncident[] }>('/api/incidents')
       .then((response) => {
         if (!cancelled) {
-          setIncidents(response.data.incidents ?? []);
+          setIncidents(mapIncidents(response.data.incidents));
         }
       })
       .catch((error) => {
