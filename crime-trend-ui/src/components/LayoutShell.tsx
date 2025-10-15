@@ -3,6 +3,8 @@ import { Category, FilterState, Severity, Timeframe } from './Filters';
 import { IncidentStats } from '../hooks/useIncidentStream';
 import { motion } from 'framer-motion';
 import { ALL_STATE_OPTION, isValidStateFilter } from '../constants/states';
+import { ALL_COUNTY_OPTION, normaliseCountySelection } from '../constants/counties';
+import { DEFAULT_STREAM_SOURCE, isValidStreamSource } from '../constants/streams';
 
 const CATEGORY_VALUES: readonly Category[] = ['violent', 'property', 'traffic', 'other'] as const;
 const SEVERITY_VALUES: readonly Severity[] = ['low', 'medium', 'high', 'critical'] as const;
@@ -54,6 +56,8 @@ export function LayoutShell({
             ? parsed.severities.filter(isSeverity)
             : Array.from(prev.severities);
           const state = isValidStateFilter(parsed.state) ? parsed.state : prev.state ?? ALL_STATE_OPTION;
+          const county = normaliseCountySelection(state, parsed.county ?? ALL_COUNTY_OPTION);
+          const stream = isValidStreamSource(parsed.stream) ? parsed.stream : DEFAULT_STREAM_SOURCE;
 
           return {
             ...prev,
@@ -62,7 +66,9 @@ export function LayoutShell({
             heatmap: typeof parsed.heatmap === 'boolean' ? parsed.heatmap : prev.heatmap,
             categories: new Set(categories),
             severities: new Set(severities),
-            state
+            state,
+            county,
+            stream
           };
         });
       } catch (error) {
@@ -76,7 +82,9 @@ export function LayoutShell({
       ...filters,
       categories: Array.from(filters.categories),
       severities: Array.from(filters.severities),
-      state: filters.state
+      state: filters.state,
+      county: filters.county,
+      stream: filters.stream
     });
     localStorage.setItem(STORAGE_KEY, payload);
   }, [filters]);

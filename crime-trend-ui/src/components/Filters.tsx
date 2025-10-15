@@ -1,6 +1,8 @@
-import { Dispatch, SetStateAction, useMemo, useState } from 'react';
+import { Dispatch, SetStateAction, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ALL_STATE_OPTION, US_STATES } from '../constants/states';
+import { ALL_COUNTY_OPTION, getCountiesForState } from '../constants/counties';
+import { STREAM_SOURCES, StreamSource } from '../constants/streams';
 
 export type Category = 'violent' | 'property' | 'traffic' | 'other';
 export type Severity = 'low' | 'medium' | 'high' | 'critical';
@@ -13,6 +15,8 @@ export interface FilterState {
   timeframe: Timeframe;
   heatmap: boolean;
   state: string;
+  county: string;
+  stream: StreamSource;
 }
 
 export interface SavedFilterPreset {
@@ -25,6 +29,8 @@ export interface SavedFilterPreset {
     timeframe: Timeframe;
     heatmap: boolean;
     state: string;
+    county: string;
+    stream: StreamSource;
   };
 }
 
@@ -85,10 +91,31 @@ export function Filters({
 
   const [presetName, setPresetName] = useState('');
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [stateDraft, setStateDraft] = useState(filters.state);
+  const [countyDraft, setCountyDraft] = useState(filters.county);
   const feedbackTone = useMemo(() => {
     if (!feedback) return '';
     return feedback.includes('updated') ? 'text-amber-300' : 'text-emerald-300';
   }, [feedback]);
+
+  useEffect(() => {
+    setStateDraft(filters.state);
+    setCountyDraft(filters.county);
+  }, [filters.state, filters.county]);
+
+  useEffect(() => {
+    const counties = getCountiesForState(stateDraft);
+    if (countyDraft !== ALL_COUNTY_OPTION && !counties.includes(countyDraft)) {
+      setCountyDraft(ALL_COUNTY_OPTION);
+    }
+  }, [stateDraft, countyDraft]);
+
+  const availableCounties = useMemo(() => {
+    const counties = getCountiesForState(stateDraft);
+    return [ALL_COUNTY_OPTION, ...counties];
+  }, [stateDraft]);
+
+  const needsLocationApply = stateDraft !== filters.state || countyDraft !== filters.county;
 
   const handleSavePreset = () => {
     const result = onSavePreset(presetName);
@@ -113,6 +140,16 @@ export function Filters({
     setTimeout(() => setFeedback(null), 1800);
   };
 
+  const handleApplyLocation = () => {
+    setFilters((prev) => ({
+      ...prev,
+      state: stateDraft,
+      county: countyDraft
+    }));
+    setFeedback('Location updated');
+    setTimeout(() => setFeedback(null), 1800);
+  };
+
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-slate-800/60 bg-slate-900/40 p-4 shadow-inner">
       <div className="flex flex-col gap-3">
@@ -133,21 +170,79 @@ export function Filters({
         <label htmlFor="state-select" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
           State
         </label>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+          <select
+            id="state-select"
+            value={stateDraft}
+            onChange={(event) => setStateDraft(event.target.value)}
+            className="w-full rounded-lg border border-slate-700/60 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 shadow-sm focus:border-emerald-400/80 focus:outline-none focus:ring focus:ring-emerald-500/30"
+          >
+            <option value={ALL_STATE_OPTION}>Nationwide (all states)</option>
+            {US_STATES.map((state) => (
+              <option key={state.code} value={state.code}>
+                {state.name}
+              </option>
+            ))}
+          </select>
+          <motion.button
+            whileTap={{ scale: needsLocationApply ? 0.95 : 1 }}
+            type="button"
+            onClick={handleApplyLocation}
+            disabled={!needsLocationApply}
+            className={`w-full rounded-lg px-3 py-2 text-sm font-semibold transition sm:w-auto ${
+              needsLocationApply
+                ? 'bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-500/40 hover:bg-emerald-500/30'
+                : 'cursor-not-allowed bg-slate-800/50 text-slate-500'
+            }`}
+          >
+            Search
+          </motion.button>
+        </div>
+        <div className="flex flex-col gap-2">
+          <label htmlFor="county-select" className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            County
+          </label>
+          <select
+            id="county-select"
+            value={countyDraft}
+            onChange={(event) => setCountyDraft(event.target.value)}
+            className="w-full rounded-lg border border-slate-700/60 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 shadow-sm focus:border-emerald-400/80 focus:outline-none focus:ring focus:ring-emerald-500/30"
+          >
+            <option value={ALL_COUNTY_OPTION}>
+              {stateDraft === ALL_STATE_OPTION ? 'All counties (nationwide)' : 'All counties'}
+            </option>
+            {availableCounties
+              .filter((county) => county !== ALL_COUNTY_OPTION)
+              .map((county) => (
+                <option key={county} value={county}>
+                  {county}
+                </option>
+              ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <label htmlFor="stream-select" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+          Preferred stream
+        </label>
         <select
-          id="state-select"
-          value={filters.state}
-          onChange={(event) =>
+          id="stream-select"
+          value={filters.stream}
+          onChange={(event) => {
+            const nextStream = event.target.value as StreamSource;
             setFilters((prev) => ({
               ...prev,
-              state: event.target.value
-            }))
-          }
+              stream: nextStream
+            }));
+            setFeedback('Stream updated');
+            setTimeout(() => setFeedback(null), 1800);
+          }}
           className="w-full rounded-lg border border-slate-700/60 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 shadow-sm focus:border-emerald-400/80 focus:outline-none focus:ring focus:ring-emerald-500/30"
         >
-          <option value={ALL_STATE_OPTION}>Nationwide (all states)</option>
-          {US_STATES.map((state) => (
-            <option key={state.code} value={state.code}>
-              {state.name}
+          {STREAM_SOURCES.map((source) => (
+            <option key={source.id} value={source.id}>
+              {source.label}
             </option>
           ))}
         </select>
