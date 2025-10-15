@@ -1,4 +1,4 @@
-import { Dispatch, SetStateAction } from 'react';
+import { Dispatch, SetStateAction, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 
 export type Category = 'violent' | 'property' | 'traffic' | 'other';
@@ -13,11 +13,29 @@ export interface FilterState {
   heatmap: boolean;
 }
 
+export interface SavedFilterPreset {
+  id: string;
+  name: string;
+  filters: {
+    query: string;
+    categories: Category[];
+    severities: Severity[];
+    timeframe: Timeframe;
+    heatmap: boolean;
+  };
+}
+
+export type SavePresetResult = 'created' | 'updated' | 'skipped';
+
 interface FiltersProps {
   filters: FilterState;
   setFilters: Dispatch<SetStateAction<FilterState>>;
   onTogglePause: () => void;
   paused: boolean;
+  savedPresets: SavedFilterPreset[];
+  onSavePreset: (name: string) => SavePresetResult;
+  onApplyPreset: (id: string) => void;
+  onDeletePreset: (id: string) => void;
 }
 
 const CATEGORY_LABELS: Record<Category, string> = {
@@ -42,7 +60,16 @@ const TONE_STYLES: Record<Category | 'neutral', string> = {
   neutral: 'border-transparent bg-gradient-to-r from-slate-700/60 to-slate-600/40 text-slate-200'
 };
 
-export function Filters({ filters, setFilters, onTogglePause, paused }: FiltersProps) {
+export function Filters({
+  filters,
+  setFilters,
+  onTogglePause,
+  paused,
+  savedPresets,
+  onSavePreset,
+  onApplyPreset,
+  onDeletePreset
+}: FiltersProps) {
   const toggleSetValue = <T,>(set: Set<T>, value: T) => {
     const next = new Set(set);
     if (next.has(value)) {
@@ -51,6 +78,36 @@ export function Filters({ filters, setFilters, onTogglePause, paused }: FiltersP
       next.add(value);
     }
     return next;
+  };
+
+  const [presetName, setPresetName] = useState('');
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const feedbackTone = useMemo(() => {
+    if (!feedback) return '';
+    return feedback.includes('updated') ? 'text-amber-300' : 'text-emerald-300';
+  }, [feedback]);
+
+  const handleSavePreset = () => {
+    const result = onSavePreset(presetName);
+    if (result === 'skipped') {
+      setFeedback('Name required');
+      return;
+    }
+    setFeedback(result === 'created' ? 'Preset saved' : 'Preset updated');
+    setPresetName('');
+    setTimeout(() => setFeedback(null), 2400);
+  };
+
+  const handleApplyPreset = (id: string) => {
+    onApplyPreset(id);
+    setFeedback('Preset applied');
+    setTimeout(() => setFeedback(null), 1800);
+  };
+
+  const handleDeletePreset = (id: string) => {
+    onDeletePreset(id);
+    setFeedback('Preset removed');
+    setTimeout(() => setFeedback(null), 1800);
   };
 
   return (
@@ -138,6 +195,51 @@ export function Filters({ filters, setFilters, onTogglePause, paused }: FiltersP
         >
           {paused ? 'Resume' : 'Pause'}
         </motion.button>
+      </div>
+
+      <div className="rounded-xl border border-slate-800/60 bg-slate-950/40 p-3 text-xs text-slate-300">
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Saved filter presets</p>
+          {feedback && <span className={`text-[11px] font-semibold ${feedbackTone}`}>{feedback}</span>}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {savedPresets.length === 0 && <span className="text-slate-500">No presets yet.</span>}
+          {savedPresets.map((preset) => (
+            <div key={preset.id} className="flex items-center gap-1 rounded-full border border-slate-700/60 bg-slate-900/70 px-2 py-1">
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handleApplyPreset(preset.id)}
+                className="text-slate-200"
+              >
+                {preset.name}
+              </motion.button>
+              <button
+                type="button"
+                onClick={() => handleDeletePreset(preset.id)}
+                className="rounded-full p-1 text-slate-500 transition hover:text-rose-300"
+                aria-label={`Remove ${preset.name}`}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 flex gap-2">
+          <input
+            type="text"
+            value={presetName}
+            onChange={(event) => setPresetName(event.target.value)}
+            placeholder="Preset name"
+            className="flex-1 rounded-lg border border-slate-700/60 bg-slate-950/70 px-3 py-2 text-slate-100 focus:border-emerald-400/80 focus:outline-none focus:ring focus:ring-emerald-500/30"
+          />
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={handleSavePreset}
+            className="rounded-lg bg-emerald-500/20 px-3 py-2 font-semibold text-emerald-200 ring-1 ring-emerald-500/40 transition hover:bg-emerald-500/30"
+          >
+            Save
+          </motion.button>
+        </div>
       </div>
     </div>
   );

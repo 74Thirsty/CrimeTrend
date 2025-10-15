@@ -62,6 +62,8 @@ export function MapView({ incidents, filters, hotZones = [] }: MapViewProps) {
                         <p className="font-semibold text-white">{incident.title}</p>
                         <p className="text-slate-300">{incident.location}</p>
                         <p className="text-slate-400">{incident.severity.toUpperCase()}</p>
+                        <p className="text-slate-400">{incident.confidence}% confidence</p>
+                        <p className="text-slate-500">{incident.source.name}</p>
                       </div>
                     </Tooltip>
                   </CircleMarker>
