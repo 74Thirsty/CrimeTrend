@@ -2,6 +2,13 @@ const { EventEmitter } = require('events');
 const logger = require('./logger');
 
 const DEFAULT_ENDPOINT = 'https://data.seattle.gov/resource/kzjm-xkqj.json';
+const PRIMARY_TIME_FIELDS = [
+  'event_received_date_time',
+  'event_dispatched_date_time',
+  'event_arrival_date_time',
+  'event_clearance_date',
+  'datetime'
+];
 const SEVERITY_MAPPINGS = [
   { pattern: /ASSAULT|SHOOT|WEAPON|FIREARM|ROBBERY|THREAT|HOMICIDE|STABBING/i, severity: 'violent' },
   { pattern: /BURGLARY|THEFT|PROWL|PROPERTY|TRESPASS|VANDAL/i, severity: 'property' },
@@ -199,6 +206,76 @@ class IncidentService extends EventEmitter {
     this.incidents = new Map();
     this.interval = null;
     this.signatures = new Map();
+    this.primaryTimeField = this.resolveInitialTimeField(options.primaryTimeField);
+  }
+
+  resolveInitialTimeField(explicitField) {
+    if (explicitField && PRIMARY_TIME_FIELDS.includes(explicitField)) {
+      return explicitField;
+    }
+    if (explicitField) {
+      logger.warn('unknown primary time field provided, falling back to defaults', {
+        field: explicitField
+      });
+    }
+    return PRIMARY_TIME_FIELDS[0];
+  }
+
+  advanceTimeField(currentField) {
+    const currentIndex = PRIMARY_TIME_FIELDS.indexOf(currentField);
+    if (currentIndex === -1 || currentIndex === PRIMARY_TIME_FIELDS.length - 1) {
+      return null;
+    }
+    return PRIMARY_TIME_FIELDS[currentIndex + 1];
+  }
+
+  detectMissingColumn(body, columnName) {
+    if (!body || !columnName) return false;
+    try {
+      const parsed = JSON.parse(body);
+      if (parsed?.errorCode === 'query.soql.no-such-column') {
+        return parsed?.data?.column === columnName;
+      }
+    } catch (_) {
+      // Body wasn't JSON – fall through to string matching below.
+    }
+    return body.includes('No such column') && body.includes(columnName);
+  }
+
+  async fetchIncidents(primaryTimeField, since) {
+    const params = new URLSearchParams();
+    params.set('$limit', String(this.options.limit));
+    params.set('$order', `${primaryTimeField} DESC`);
+    params.set('$where', `${primaryTimeField} >= '${since.toISOString()}'`);
+
+    const url = `${this.options.endpoint}?${params.toString()}`;
+    const headers = { Accept: 'application/json' };
+    if (this.options.appToken) {
+      headers['X-App-Token'] = this.options.appToken;
+    }
+
+    logger.info('fetching incidents', { url });
+
+    const response = await fetch(url, { headers });
+    const body = await response.text();
+    if (!response.ok) {
+      const missingColumn =
+        response.status === 400 && this.detectMissingColumn(body, primaryTimeField);
+      const error = new Error(`Failed to fetch incidents: ${response.status} ${body}`);
+      error.missingColumn = missingColumn;
+      throw error;
+    }
+
+    let payload;
+    try {
+      payload = JSON.parse(body);
+    } catch (error) {
+      throw new Error('Unexpected response shape from data feed');
+    }
+    if (!Array.isArray(payload)) {
+      throw new Error('Unexpected response shape from data feed');
+    }
+    return payload;
   }
 
   start() {
@@ -229,29 +306,36 @@ class IncidentService extends EventEmitter {
   async poll() {
     const now = new Date();
     const since = new Date(now.getTime() - this.options.lookbackMinutes * 60000);
-    const params = new URLSearchParams();
-    params.set('$limit', String(this.options.limit));
-    const primaryTimeField = 'event_received_date_time';
-    params.set('$order', `${primaryTimeField} DESC`);
-    params.set('$where', `${primaryTimeField} >= '${since.toISOString()}'`);
-
-    const url = `${this.options.endpoint}?${params.toString()}`;
-    const headers = { 'Accept': 'application/json' };
-    if (this.options.appToken) {
-      headers['X-App-Token'] = this.options.appToken;
+    let primaryTimeField = this.primaryTimeField;
+    const attempted = new Set();
+    let payload;
+    while (primaryTimeField) {
+      try {
+        payload = await this.fetchIncidents(primaryTimeField, since);
+        this.primaryTimeField = primaryTimeField;
+        break;
+      } catch (error) {
+        if (error.missingColumn) {
+          attempted.add(primaryTimeField);
+          const nextField = this.advanceTimeField(primaryTimeField);
+          if (!nextField || attempted.has(nextField)) {
+            throw new Error(
+              `Failed to fetch incidents: unsupported primary time field ${primaryTimeField}`
+            );
+          }
+          logger.warn('primary time field missing, falling back', {
+            previous: primaryTimeField,
+            next: nextField
+          });
+          primaryTimeField = nextField;
+          continue;
+        }
+        throw error;
+      }
     }
 
-    logger.info('fetching incidents', { url });
-
-    const response = await fetch(url, { headers });
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(`Failed to fetch incidents: ${response.status} ${body}`);
-    }
-
-    const payload = await response.json();
-    if (!Array.isArray(payload)) {
-      throw new Error('Unexpected response shape from data feed');
+    if (!payload) {
+      throw new Error('Failed to fetch incidents: unable to determine a valid time field');
     }
     const fetchedAt = new Date().toISOString();
     const newIncidents = new Map();
