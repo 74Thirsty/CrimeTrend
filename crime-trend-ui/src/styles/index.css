@@ -2,7 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+html {
+  color-scheme: light;
+}
+
+html.dark {
   color-scheme: dark;
 }
 

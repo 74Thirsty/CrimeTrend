@@ -63,11 +63,16 @@ const SEVERITY_LABELS: Record<Severity, string> = {
 };
 
 const TONE_STYLES: Record<Category | 'neutral', string> = {
-  violent: 'border-transparent bg-gradient-to-r from-violent/40 to-violent/20 text-white',
-  property: 'border-transparent bg-gradient-to-r from-property/40 to-property/20 text-slate-100',
-  traffic: 'border-transparent bg-gradient-to-r from-traffic/40 to-traffic/20 text-slate-100',
-  other: 'border-transparent bg-gradient-to-r from-other/40 to-other/20 text-slate-100',
-  neutral: 'border-transparent bg-gradient-to-r from-slate-700/60 to-slate-600/40 text-slate-200'
+  violent:
+    'border-transparent bg-gradient-to-r from-violent/20 to-violent/10 text-violent-700 dark:from-violent/40 dark:to-violent/20 dark:text-white',
+  property:
+    'border-transparent bg-gradient-to-r from-property/20 to-property/10 text-orange-700 dark:from-property/40 dark:to-property/20 dark:text-slate-100',
+  traffic:
+    'border-transparent bg-gradient-to-r from-traffic/20 to-traffic/10 text-sky-700 dark:from-traffic/40 dark:to-traffic/20 dark:text-slate-100',
+  other:
+    'border-transparent bg-gradient-to-r from-other/20 to-other/10 text-emerald-700 dark:from-other/40 dark:to-other/20 dark:text-slate-100',
+  neutral:
+    'border-transparent bg-gradient-to-r from-slate-200 to-slate-100 text-slate-800 dark:from-slate-700/60 dark:to-slate-600/40 dark:text-slate-200'
 };
 
 export function Filters({
@@ -163,9 +168,9 @@ export function Filters({
   };
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-slate-800/60 bg-slate-900/40 p-4 shadow-inner">
+    <div className="flex flex-col gap-4 rounded-xl border border-slate-200/80 bg-white/80 p-4 shadow-inner shadow-slate-200/60 transition-colors dark:border-slate-800/60 dark:bg-slate-900/40 dark:shadow-none">
       <div className="flex flex-col gap-3">
-        <label htmlFor="search" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+        <label htmlFor="search" className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
           Search incidents
         </label>
         <input
@@ -174,12 +179,12 @@ export function Filters({
           placeholder="Search by keyword or location"
           value={filters.query}
           onChange={(event) => setFilters((prev) => ({ ...prev, query: event.target.value }))}
-          className="w-full rounded-lg border border-slate-700/60 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 shadow-sm focus:border-emerald-400/80 focus:outline-none focus:ring focus:ring-emerald-500/30"
+          className="w-full rounded-lg border border-slate-300/80 bg-white/70 px-3 py-2 text-sm text-slate-800 shadow-sm focus:border-emerald-500/60 focus:outline-none focus:ring focus:ring-emerald-500/30 dark:border-slate-700/60 dark:bg-slate-950/70 dark:text-slate-100"
         />
       </div>
 
       <div className="flex flex-col gap-3">
-        <label htmlFor="state-select" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+        <label htmlFor="state-select" className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
           State
         </label>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
@@ -188,7 +193,7 @@ export function Filters({
             value={stateDraft}
             onChange={(event) => setStateDraft(event.target.value)}
             disabled={loadingStates && states.length === 0}
-            className="w-full rounded-lg border border-slate-700/60 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 shadow-sm focus:border-emerald-400/80 focus:outline-none focus:ring focus:ring-emerald-500/30"
+            className="w-full rounded-lg border border-slate-300/80 bg-white/70 px-3 py-2 text-sm text-slate-800 shadow-sm focus:border-emerald-500/60 focus:outline-none focus:ring focus:ring-emerald-500/30 dark:border-slate-700/60 dark:bg-slate-950/70 dark:text-slate-100"
           >
             <option value={ALL_STATE_OPTION}>Nationwide (all states)</option>
             {states.map((state) => (
@@ -204,15 +209,15 @@ export function Filters({
             disabled={!needsLocationApply}
             className={`w-full rounded-lg px-3 py-2 text-sm font-semibold transition sm:w-auto ${
               needsLocationApply
-                ? 'bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-500/40 hover:bg-emerald-500/30'
-                : 'cursor-not-allowed bg-slate-800/50 text-slate-500'
+                ? 'bg-emerald-200/60 text-emerald-700 ring-1 ring-emerald-300/70 hover:bg-emerald-200/80 dark:bg-emerald-500/20 dark:text-emerald-200 dark:ring-emerald-500/40 dark:hover:bg-emerald-500/30'
+                : 'cursor-not-allowed bg-slate-200/70 text-slate-400 dark:bg-slate-800/50 dark:text-slate-500'
             }`}
           >
             Search
           </motion.button>
         </div>
         <div className="flex flex-col gap-2">
-          <label htmlFor="county-select" className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <label htmlFor="county-select" className="text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-500">
             County
           </label>
           <select
@@ -220,7 +225,7 @@ export function Filters({
             value={countyDraft}
             onChange={(event) => setCountyDraft(event.target.value)}
             disabled={stateDraft === ALL_STATE_OPTION || loadingCounties}
-            className="w-full rounded-lg border border-slate-700/60 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 shadow-sm focus:border-emerald-400/80 focus:outline-none focus:ring focus:ring-emerald-500/30"
+            className="w-full rounded-lg border border-slate-300/80 bg-white/70 px-3 py-2 text-sm text-slate-800 shadow-sm focus:border-emerald-500/60 focus:outline-none focus:ring focus:ring-emerald-500/30 dark:border-slate-700/60 dark:bg-slate-950/70 dark:text-slate-100"
           >
             <option value={ALL_COUNTY_OPTION}>
               {stateDraft === ALL_STATE_OPTION
@@ -241,7 +246,7 @@ export function Filters({
       </div>
 
       <div className="flex flex-col gap-3">
-        <label htmlFor="stream-select" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+        <label htmlFor="stream-select" className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
           Preferred stream
         </label>
         <select
@@ -256,7 +261,7 @@ export function Filters({
             setFeedback('Stream updated');
             setTimeout(() => setFeedback(null), 1800);
           }}
-          className="w-full rounded-lg border border-slate-700/60 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 shadow-sm focus:border-emerald-400/80 focus:outline-none focus:ring focus:ring-emerald-500/30"
+          className="w-full rounded-lg border border-slate-300/80 bg-white/70 px-3 py-2 text-sm text-slate-800 shadow-sm focus:border-emerald-500/60 focus:outline-none focus:ring focus:ring-emerald-500/30 dark:border-slate-700/60 dark:bg-slate-950/70 dark:text-slate-100"
         >
           {STREAM_SOURCES.map((source) => (
             <option key={source.id} value={source.id}>
@@ -317,12 +322,12 @@ export function Filters({
       </div>
 
       <div className="flex items-center justify-between text-xs">
-        <label className="flex items-center gap-2 text-slate-300">
+        <label className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
           <input
             type="checkbox"
             checked={filters.heatmap}
             onChange={(event) => setFilters((prev) => ({ ...prev, heatmap: event.target.checked }))}
-            className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-emerald-400 focus:ring-emerald-500/40"
+            className="h-4 w-4 rounded border-slate-300 bg-white text-emerald-600 focus:ring-emerald-500/30 dark:border-slate-600 dark:bg-slate-900 dark:text-emerald-400 dark:focus:ring-emerald-500/40"
           />
           Heatmap mode
         </label>
@@ -330,33 +335,38 @@ export function Filters({
           whileTap={{ scale: 0.95 }}
           onClick={onTogglePause}
           className={`rounded-full px-3 py-1 font-medium transition ${
-            paused ? 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-400/60' : 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/60'
+            paused
+              ? 'bg-amber-200/60 text-amber-700 ring-1 ring-amber-300/70 dark:bg-amber-500/20 dark:text-amber-400 dark:ring-amber-400/60'
+              : 'bg-emerald-200/60 text-emerald-700 ring-1 ring-emerald-300/70 dark:bg-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-400/60'
           }`}
         >
           {paused ? 'Resume' : 'Pause'}
         </motion.button>
       </div>
 
-      <div className="rounded-xl border border-slate-800/60 bg-slate-950/40 p-3 text-xs text-slate-300">
+      <div className="rounded-xl border border-slate-200/80 bg-slate-100/70 p-3 text-xs text-slate-600 transition-colors dark:border-slate-800/60 dark:bg-slate-950/40 dark:text-slate-300">
         <div className="flex items-center justify-between">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Saved filter presets</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Saved filter presets</p>
           {feedback && <span className={`text-[11px] font-semibold ${feedbackTone}`}>{feedback}</span>}
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          {savedPresets.length === 0 && <span className="text-slate-500">No presets yet.</span>}
+          {savedPresets.length === 0 && <span className="text-slate-500 dark:text-slate-400">No presets yet.</span>}
           {savedPresets.map((preset) => (
-            <div key={preset.id} className="flex items-center gap-1 rounded-full border border-slate-700/60 bg-slate-900/70 px-2 py-1">
+            <div
+              key={preset.id}
+              className="flex items-center gap-1 rounded-full border border-slate-300/70 bg-white/80 px-2 py-1 dark:border-slate-700/60 dark:bg-slate-900/70"
+            >
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => handleApplyPreset(preset.id)}
-                className="text-slate-200"
+                className="text-slate-700 dark:text-slate-200"
               >
                 {preset.name}
               </motion.button>
               <button
                 type="button"
                 onClick={() => handleDeletePreset(preset.id)}
-                className="rounded-full p-1 text-slate-500 transition hover:text-rose-300"
+                className="rounded-full p-1 text-slate-400 transition hover:text-rose-500 dark:text-slate-500 dark:hover:text-rose-300"
                 aria-label={`Remove ${preset.name}`}
               >
                 ×
@@ -370,12 +380,12 @@ export function Filters({
             value={presetName}
             onChange={(event) => setPresetName(event.target.value)}
             placeholder="Preset name"
-            className="flex-1 rounded-lg border border-slate-700/60 bg-slate-950/70 px-3 py-2 text-slate-100 focus:border-emerald-400/80 focus:outline-none focus:ring focus:ring-emerald-500/30"
+            className="flex-1 rounded-lg border border-slate-300/80 bg-white/70 px-3 py-2 text-slate-800 focus:border-emerald-500/60 focus:outline-none focus:ring focus:ring-emerald-500/30 dark:border-slate-700/60 dark:bg-slate-950/70 dark:text-slate-100"
           />
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={handleSavePreset}
-            className="rounded-lg bg-emerald-500/20 px-3 py-2 font-semibold text-emerald-200 ring-1 ring-emerald-500/40 transition hover:bg-emerald-500/30"
+            className="rounded-lg bg-emerald-200/60 px-3 py-2 font-semibold text-emerald-700 ring-1 ring-emerald-300/70 transition hover:bg-emerald-200/80 dark:bg-emerald-500/20 dark:text-emerald-200 dark:ring-emerald-500/40 dark:hover:bg-emerald-500/30"
           >
             Save
           </motion.button>
@@ -398,7 +408,9 @@ function ToggleChip({ label, active, onClick, tone }: ToggleChipProps) {
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
       className={`rounded-lg border px-3 py-2 text-left font-medium shadow transition ${
-        active ? TONE_STYLES[tone] : 'border-slate-700/60 bg-slate-900/50 text-slate-300 hover:border-slate-500'
+        active
+          ? TONE_STYLES[tone]
+          : 'border-slate-300/80 bg-white/70 text-slate-600 hover:border-slate-400 dark:border-slate-700/60 dark:bg-slate-900/50 dark:text-slate-300 dark:hover:border-slate-500'
       }`}
     >
       {label}

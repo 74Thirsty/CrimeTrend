@@ -25,6 +25,7 @@ function isTimeframe(value: unknown): value is Timeframe {
 interface LayoutShellProps {
   children: ReactNode;
   onToggleTheme: () => void;
+  isDarkMode: boolean;
   filters: FilterState;
   setFilters: Dispatch<SetStateAction<FilterState>>;
   paused: boolean;
@@ -37,6 +38,7 @@ const STORAGE_KEY = 'crime-trend-filters';
 export function LayoutShell({
   children,
   onToggleTheme,
+  isDarkMode,
   filters,
   setFilters,
   paused,
@@ -90,12 +92,12 @@ export function LayoutShell({
   }, [filters]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-white to-slate-200 text-slate-900 transition-colors dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100">
       <div className="mx-auto flex max-w-[1600px] flex-col gap-6 px-6 pb-10 pt-6">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Crime Trend Tracker</h1>
-            <p className="text-sm text-slate-400">
+            <h1 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-white sm:text-4xl">Crime Trend Tracker</h1>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
               Live situational awareness across violent, property, and traffic incidents.
             </p>
           </div>
@@ -103,27 +105,29 @@ export function LayoutShell({
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={onToggleTheme}
-              className="rounded-full border border-slate-700/60 bg-slate-900/80 px-4 py-2 text-sm font-medium text-slate-100 shadow-md shadow-slate-900/50 transition hover:border-slate-500"
+              className="rounded-full border border-slate-300/80 bg-white/80 px-4 py-2 text-sm font-medium text-slate-900 shadow-md shadow-slate-300/70 transition hover:border-slate-400 dark:border-slate-700/60 dark:bg-slate-900/80 dark:text-slate-100 dark:shadow-slate-900/50"
             >
-              Toggle theme
+              Switch to {isDarkMode ? 'light' : 'dark'} theme
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={onTogglePause}
               className={`rounded-full px-4 py-2 text-sm font-semibold shadow-md transition ${
-                paused ? 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-400/60' : 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/60'
+                paused
+                  ? 'bg-amber-200/60 text-amber-700 ring-1 ring-amber-300/70 dark:bg-amber-500/20 dark:text-amber-400 dark:ring-amber-400/60'
+                  : 'bg-emerald-200/60 text-emerald-700 ring-1 ring-emerald-300/70 dark:bg-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-400/60'
               }`}
             >
               {paused ? 'Resume stream' : 'Pause stream'}
             </motion.button>
           </div>
         </header>
-        <section className="grid grid-cols-2 gap-4 text-sm text-slate-300 sm:grid-cols-5">
-          <StatCard title="Active incidents" value={stats.total.toLocaleString()} highlight="from-emerald-500/80 to-emerald-400/60" />
-          <StatCard title="Violent" value={stats.categories.violent ?? 0} highlight="from-violent/60 to-violent/30" />
-          <StatCard title="Property" value={stats.categories.property ?? 0} highlight="from-property/50 to-property/20" />
-          <StatCard title="Traffic" value={stats.categories.traffic ?? 0} highlight="from-traffic/50 to-traffic/20" />
-          <StatCard title="Other" value={stats.categories.other ?? 0} highlight="from-other/50 to-other/20" />
+        <section className="grid grid-cols-2 gap-4 text-sm text-slate-600 dark:text-slate-300 sm:grid-cols-5">
+          <StatCard title="Active incidents" value={stats.total.toLocaleString()} highlight="from-emerald-400/70 to-emerald-300/50 dark:from-emerald-500/80 dark:to-emerald-400/60" />
+          <StatCard title="Violent" value={stats.categories.violent ?? 0} highlight="from-violent/30 to-violent/10 dark:from-violent/60 dark:to-violent/30" />
+          <StatCard title="Property" value={stats.categories.property ?? 0} highlight="from-property/30 to-property/10 dark:from-property/50 dark:to-property/20" />
+          <StatCard title="Traffic" value={stats.categories.traffic ?? 0} highlight="from-traffic/30 to-traffic/10 dark:from-traffic/50 dark:to-traffic/20" />
+          <StatCard title="Other" value={stats.categories.other ?? 0} highlight="from-other/30 to-other/10 dark:from-other/50 dark:to-other/20" />
         </section>
         {children}
       </div>
@@ -139,11 +143,11 @@ interface StatCardProps {
 
 function StatCard({ title, value, highlight }: StatCardProps) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-800/60 bg-slate-900/50 shadow-lg">
+    <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white/80 shadow-lg shadow-slate-200/70 transition-colors dark:border-slate-800/60 dark:bg-slate-900/50 dark:shadow-slate-900/50">
       <div className={`h-1 bg-gradient-to-r ${highlight}`} />
       <div className="space-y-2 p-4">
-        <p className="text-xs uppercase tracking-wide text-slate-400">{title}</p>
-        <p className="text-2xl font-semibold text-white">{value}</p>
+        <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{title}</p>
+        <p className="text-2xl font-semibold text-slate-900 dark:text-white">{value}</p>
       </div>
     </div>
   );

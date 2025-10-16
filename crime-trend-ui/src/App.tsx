@@ -12,6 +12,7 @@ import { ALL_COUNTY_OPTION, normaliseCountySelection } from './constants/countie
 import { DEFAULT_STREAM_SOURCE, isValidStreamSource } from './constants/streams';
 
 const PRESET_STORAGE_KEY = 'crime-trend-filter-presets-v2';
+const THEME_STORAGE_KEY = 'crime-trend-theme';
 const CATEGORY_VALUES: readonly Category[] = ['violent', 'property', 'traffic', 'other'] as const;
 const SEVERITY_VALUES: readonly Severity[] = ['low', 'medium', 'high', 'critical'] as const;
 const TIMEFRAME_VALUES: readonly Timeframe[] = ['1h', '24h', '7d'] as const;
@@ -91,6 +92,35 @@ function App() {
       return [];
     }
   });
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window === 'undefined') {
+      return true;
+    }
+    const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored === 'light') {
+      return false;
+    }
+    if (stored === 'dark') {
+      return true;
+    }
+    const prefersDark = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return prefersDark;
+  });
+
+  useEffect(() => {
+    if (typeof document === 'undefined' || typeof window === 'undefined') {
+      return;
+    }
+    const root = document.documentElement;
+    if (isDarkMode) {
+      root.classList.add('dark');
+      window.localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+    } else {
+      root.classList.remove('dark');
+      window.localStorage.setItem(THEME_STORAGE_KEY, 'light');
+    }
+  }, [isDarkMode]);
+
   const { incidents, stats, togglePause, paused, hotZones } = useIncidentStream(filters);
 
   useEffect(() => {
@@ -166,7 +196,8 @@ function App() {
 
   return (
     <LayoutShell
-      onToggleTheme={() => document.documentElement.classList.toggle('dark')}
+      onToggleTheme={() => setIsDarkMode((prev) => !prev)}
+      isDarkMode={isDarkMode}
       filters={filters}
       setFilters={setFilters}
       paused={paused}
@@ -177,7 +208,7 @@ function App() {
         <div className="flex flex-col gap-6">
           <HotZoneAlerts hotZones={hotZones} />
           <MapView incidents={incidents} filters={filters} hotZones={hotZones} />
-          <Trends incidents={incidents} stats={stats} timeframe={filters.timeframe} />
+          <Trends incidents={incidents} stats={stats} timeframe={filters.timeframe} isDarkMode={isDarkMode} />
         </div>
         <AnimatePresence mode="wait">
           <motion.div
