@@ -204,10 +204,16 @@ export function useIncidentStream(filters: FilterState) {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [paused, setPaused] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [connectionNonce, setConnectionNonce] = useState(0);
 
   const handleMessage = useCallback((event: MessageEvent) => {
-    const data = JSON.parse(event.data) as { incidents?: RawIncident[] };
-    setIncidents(mapIncidents(data.incidents));
+    try {
+      const data = JSON.parse(event.data) as { incidents?: RawIncident[] };
+      setIncidents(mapIncidents(data.incidents));
+    } catch (error) {
+      console.error('Failed to parse incident stream payload', error);
+    }
   }, []);
 
   useEffect(() => {
@@ -235,6 +241,10 @@ export function useIncidentStream(filters: FilterState) {
       eventSourceRef.current = null;
       return () => {
         cancelled = true;
+        if (reconnectTimerRef.current) {
+          clearTimeout(reconnectTimerRef.current);
+          reconnectTimerRef.current = null;
+        }
       };
     }
 
@@ -245,25 +255,46 @@ export function useIncidentStream(filters: FilterState) {
         county
       })
     );
+    const noop = () => void 0;
     eventSourceRef.current = eventSource;
     eventSource.addEventListener('message', handleMessage);
-    eventSource.addEventListener('heartbeat', () => void 0);
+    eventSource.addEventListener('heartbeat', noop);
     eventSource.onerror = () => {
+      if (cancelled) {
+        return;
+      }
       eventSource.close();
       eventSourceRef.current = null;
-      setTimeout(() => {
-        if (!paused) {
-          setIncidents((current) => [...current]);
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+      }
+      reconnectTimerRef.current = setTimeout(() => {
+        reconnectTimerRef.current = null;
+        if (!cancelled && !paused) {
+          setConnectionNonce((nonce) => nonce + 1);
         }
       }, 3000);
     };
 
     return () => {
       cancelled = true;
+      eventSource.removeEventListener('message', handleMessage);
+      eventSource.removeEventListener('heartbeat', noop);
       eventSource.close();
       eventSourceRef.current = null;
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
     };
-  }, [handleMessage, paused, filters.stream, filters.state, filters.county]);
+  }, [
+    handleMessage,
+    paused,
+    filters.stream,
+    filters.state,
+    filters.county,
+    connectionNonce
+  ]);
 
   const togglePause = useCallback(() => {
     setPaused((prev) => !prev);
