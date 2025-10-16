@@ -43,9 +43,9 @@ export function MapView({ incidents, filters, hotZones = [] }: MapViewProps) {
   }, [incidents, filters]);
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-slate-800/60 bg-slate-900/50 shadow-xl">
-      <div className="flex items-center justify-between px-5 py-3 text-sm text-slate-300">
-        <h2 className="text-lg font-semibold text-white">Geospatial view</h2>
+    <div className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white/80 shadow-xl shadow-slate-200/70 transition-colors dark:border-slate-800/60 dark:bg-slate-900/50 dark:shadow-slate-900/50">
+      <div className="flex items-center justify-between px-5 py-3 text-sm text-slate-600 dark:text-slate-300">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Geospatial view</h2>
         <span>{filtered.length} plotted incidents</span>
       </div>
       <div className="h-[420px]">
@@ -69,14 +69,14 @@ export function MapView({ incidents, filters, hotZones = [] }: MapViewProps) {
                       className: 'animate-pulseGlow'
                     }}
                   >
-                    <Tooltip direction="top" offset={[0, -6]} opacity={1} className="bg-slate-900/90">
+                    <Tooltip direction="top" offset={[0, -6]} opacity={1} className="bg-white/95 text-slate-700 shadow dark:bg-slate-900/90 dark:text-slate-200">
                       <div className="space-y-1 text-xs">
-                        <p className="font-semibold text-white">{incident.title}</p>
-                        <p className="text-slate-300">{incident.location}</p>
-                        {incident.state && <p className="text-slate-400">{incident.state}</p>}
-                        <p className="text-slate-400">{incident.severity.toUpperCase()}</p>
-                        <p className="text-slate-400">{incident.confidence}% confidence</p>
-                        <p className="text-slate-500">{incident.source.name}</p>
+                        <p className="font-semibold text-slate-900 dark:text-white">{incident.title}</p>
+                        <p className="text-slate-600 dark:text-slate-300">{incident.location}</p>
+                        {incident.state && <p className="text-slate-500 dark:text-slate-400">{incident.state}</p>}
+                        <p className="text-slate-500 dark:text-slate-400">{incident.severity.toUpperCase()}</p>
+                        <p className="text-slate-500 dark:text-slate-400">{incident.confidence}% confidence</p>
+                        <p className="text-slate-500 dark:text-slate-500">{incident.source.name}</p>
                       </div>
                     </Tooltip>
                   </CircleMarker>
@@ -99,14 +99,14 @@ export function MapView({ incidents, filters, hotZones = [] }: MapViewProps) {
                           weight: 2
                         }}
                       >
-                        <Tooltip direction="top" offset={[0, -8]} opacity={1} className="bg-rose-600/80">
+                        <Tooltip direction="top" offset={[0, -8]} opacity={1} className="bg-rose-200/90 text-rose-700 shadow dark:bg-rose-600/80 dark:text-rose-50">
                           <div className="space-y-1 text-xs">
-                            <p className="font-semibold text-white">{zone.count} incidents</p>
+                            <p className="font-semibold text-rose-700 dark:text-white">{zone.count} incidents</p>
                             {Object.entries(zone.categories)
                               .sort((a, b) => b[1] - a[1])
                               .slice(0, 3)
                               .map(([category, count]) => (
-                                <p key={category} className="text-rose-100/90">
+                                <p key={category} className="text-rose-600 dark:text-rose-100/90">
                                   {category}: {count}
                                 </p>
                               ))}

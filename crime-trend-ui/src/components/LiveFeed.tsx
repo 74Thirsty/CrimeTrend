@@ -11,10 +11,10 @@ interface LiveFeedProps {
 }
 
 const severityColors: Record<string, string> = {
-  low: 'text-emerald-300',
-  medium: 'text-amber-300',
-  high: 'text-orange-300',
-  critical: 'text-rose-300'
+  low: 'text-emerald-600 dark:text-emerald-300',
+  medium: 'text-amber-600 dark:text-amber-300',
+  high: 'text-orange-600 dark:text-orange-300',
+  critical: 'text-rose-600 dark:text-rose-300'
 };
 
 export function LiveFeed({ incidents, filters, paused }: LiveFeedProps) {
@@ -46,7 +46,7 @@ export function LiveFeed({ incidents, filters, paused }: LiveFeedProps) {
 
   return (
     <div className="flex-1 overflow-hidden">
-      <div className="flex items-center justify-between px-2 text-xs text-slate-400">
+      <div className="flex items-center justify-between px-2 text-xs text-slate-600 dark:text-slate-400">
         <span>{paused ? 'Feed paused' : 'Live feed'}</span>
         <span>{filteredIncidents.length} incidents</span>
       </div>
@@ -60,55 +60,55 @@ export function LiveFeed({ incidents, filters, paused }: LiveFeedProps) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -30 }}
               transition={{ duration: 0.25 }}
-              className="group rounded-xl border border-slate-800/70 bg-slate-900/50 p-4 shadow-sm backdrop-blur hover:border-slate-600"
+              className="group rounded-xl border border-slate-200/80 bg-white/80 p-4 shadow-sm shadow-slate-200/60 backdrop-blur transition-colors hover:border-slate-300 dark:border-slate-800/70 dark:bg-slate-900/50 dark:shadow-slate-900/50 dark:hover:border-slate-600"
             >
               <header className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
-                  <h3 className="text-base font-semibold text-white">{incident.title}</h3>
-                  <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wide text-slate-400">
-                    <span className="rounded-full bg-slate-800/80 px-2 py-0.5 text-slate-200">{incident.category}</span>
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">{incident.title}</h3>
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <span className="rounded-full bg-slate-200 px-2 py-0.5 text-slate-700 dark:bg-slate-800/80 dark:text-slate-200">{incident.category}</span>
                     {incident.state && (
-                      <span className="rounded-full bg-slate-800/60 px-2 py-0.5 text-slate-200">{incident.state}</span>
+                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-slate-700 dark:bg-slate-800/60 dark:text-slate-200">{incident.state}</span>
                     )}
                     {incident.status && (
-                      <span className="rounded-full bg-indigo-500/20 px-2 py-0.5 text-indigo-200">{incident.status}</span>
+                      <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200">{incident.status}</span>
                     )}
                   </div>
                 </div>
-                <span className={`rounded-full px-2 py-1 text-xs font-semibold ${severityColors[incident.severity] ?? 'text-slate-300'}`}>
+                <span className={`rounded-full px-2 py-1 text-xs font-semibold ${severityColors[incident.severity] ?? 'text-slate-600 dark:text-slate-300'}`}>
                   {incident.severity}
                 </span>
               </header>
-              <p className="mt-2 text-sm text-slate-300">{incident.description ?? 'No additional details provided.'}</p>
-              <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-400">
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{incident.description ?? 'No additional details provided.'}</p>
+              <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
                 <span>{new Date(incident.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                 <span className="flex items-center gap-1">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"
                     fill="currentColor"
-                    className="h-4 w-4 text-emerald-400"
+                    className="h-4 w-4 text-emerald-500 dark:text-emerald-400"
                   >
                     <path d="M12 2.25c-4.97 0-9 3.77-9 8.42 0 2.6 1.3 4.96 3.34 6.51l5.07 4.03c.43.34 1.05.34 1.48 0l5.07-4.03A8.28 8.28 0 0021 10.67c0-4.65-4.03-8.42-9-8.42zm0 10.45a2.03 2.03 0 110-4.06 2.03 2.03 0 010 4.06z" />
                   </svg>
                   {incident.location}
                   {incident.state ? `, ${incident.state}` : ''}
                 </span>
-                <span className="flex items-center gap-2 text-slate-300">
-                  <div className="relative h-2 w-24 overflow-hidden rounded-full bg-slate-800/80">
+                <span className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                  <div className="relative h-2 w-24 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800/80">
                     <div
-                      className="absolute inset-y-0 left-0 bg-emerald-400/80"
+                      className="absolute inset-y-0 left-0 bg-emerald-500/70 dark:bg-emerald-400/80"
                       style={{ width: `${Math.min(100, Math.max(0, incident.confidence))}%` }}
                     />
                   </div>
-                  <span className="font-semibold text-emerald-300">{incident.confidence}% confidence</span>
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-300">{incident.confidence}% confidence</span>
                 </span>
-                <span className="flex items-center gap-1 text-slate-300">
+                <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"
                     fill="currentColor"
-                    className="h-4 w-4 text-sky-400"
+                    className="h-4 w-4 text-sky-500 dark:text-sky-400"
                   >
                     <path d="M12 2a7 7 0 00-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 00-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
                   </svg>
@@ -117,17 +117,17 @@ export function LiveFeed({ incidents, filters, paused }: LiveFeedProps) {
                 {incident.ingestedAt && <span>First seen {formatRelativeTime(incident.ingestedAt)}</span>}
               </div>
               {incident.timeline.length > 0 && (
-                <div className="mt-3 rounded-xl border border-slate-800/60 bg-slate-950/40 p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Recent activity</p>
+                <div className="mt-3 rounded-xl border border-slate-200/70 bg-slate-100/80 p-3 dark:border-slate-800/60 dark:bg-slate-950/40">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Recent activity</p>
                   <ol className="mt-2 space-y-2">
                     {incident.timeline.slice(-4).map((entry, index, array) => (
-                      <li key={`${incident.id}-${entry.timestamp}-${index}`} className="flex items-center gap-3 text-xs text-slate-300">
-                        <span className="font-semibold text-slate-200">
+                      <li key={`${incident.id}-${entry.timestamp}-${index}`} className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-300">
+                        <span className="font-semibold text-slate-700 dark:text-slate-200">
                           {entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
                         </span>
-                        <span className="text-slate-400">{entry.label ?? entry.code ?? 'Updated'}</span>
+                        <span className="text-slate-500 dark:text-slate-400">{entry.label ?? entry.code ?? 'Updated'}</span>
                         {index === array.length - 1 && (
-                          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
+                          <span className="rounded-full bg-emerald-200/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
                             Latest
                           </span>
                         )}
