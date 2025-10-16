@@ -2,7 +2,7 @@ const { EventEmitter } = require('events');
 const logger = require('./logger');
 
 const DEFAULT_ENDPOINT = 'https://data.seattle.gov/resource/kzjm-xkqj.json';
-const DEFAULT_FALLBACK_STATE = 'WA';
+const DEFAULT_FALLBACK_STATE = 'IA';
 
 const STATE_NAME_TO_CODE = {
   ALABAMA: 'AL',

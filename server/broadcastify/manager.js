@@ -6,15 +6,44 @@ const logger = require('../logger');
 const DEFAULT_BASE_URL = 'https://api.broadcastify.com';
 const DEFAULT_CACHE_TTL_SECONDS = 60 * 60 * 24; // 24 hours
 
+function extractStateIdentifier(candidate) {
+  if (!candidate) {
+    return null;
+  }
+
+  const possibleIdentifiers = [
+    candidate.id,
+    candidate.state_id,
+    candidate.stateId,
+    candidate.identifier,
+    candidate.slug,
+    candidate.state_code,
+    candidate.stateCode,
+    candidate.code
+  ];
+
+  for (const value of possibleIdentifiers) {
+    if (typeof value === 'string' || typeof value === 'number') {
+      const trimmed = String(value).trim();
+      if (trimmed) {
+        return trimmed;
+      }
+    }
+  }
+
+  return null;
+}
+
 function normaliseStateEntry(entry) {
   if (!entry || typeof entry !== 'object') {
     return null;
   }
   const candidate = entry;
-  const code =
+  const id = extractStateIdentifier(candidate);
+  const codeCandidate =
     (typeof candidate.code === 'string' && candidate.code.trim()) ||
-    (typeof candidate.id === 'string' && candidate.id.trim()) ||
     (typeof candidate.abbreviation === 'string' && candidate.abbreviation.trim());
+  const code = codeCandidate || (typeof id === 'string' && /^[A-Za-z]{2}$/.test(id) ? id : null);
   const name =
     (typeof candidate.name === 'string' && candidate.name.trim()) ||
     (typeof candidate.description === 'string' && candidate.description.trim()) ||
@@ -23,7 +52,7 @@ function normaliseStateEntry(entry) {
   if (!code || !name) {
     return null;
   }
-  return { code: code.toUpperCase(), name };
+  return { code: code.toUpperCase(), name, id: id || code.toUpperCase() };
 }
 
 function normaliseFeed(entry) {
@@ -58,6 +87,7 @@ class BroadcastifyManager {
     this.fetchImpl = options.fetch || (typeof fetch === 'function' ? fetch : null);
     this.cachePromise = createCacheClient();
     this.pending = new Map();
+    this.stateCodeLookup = new Map();
     if (!this.fetchImpl) {
       throw new Error('Global fetch API is not available');
     }
@@ -122,9 +152,9 @@ class BroadcastifyManager {
     }
   }
 
-  async getStates(options = {}) {
+  async loadStates(options = {}) {
     const cacheKey = 'broadcastify:states';
-    return this._getCachedOrFetch(cacheKey, async () => {
+    const states = await this._getCachedOrFetch(cacheKey, async () => {
       const payload = await this.fetchJson('/calls/states', options);
       const list = Array.isArray(payload?.states) ? payload.states : Array.isArray(payload) ? payload : [];
       const normalised = [];
@@ -140,18 +170,48 @@ class BroadcastifyManager {
       normalised.sort((a, b) => a.name.localeCompare(b.name));
       return normalised;
     }, options);
+
+    this.stateCodeLookup = new Map();
+    for (const state of states) {
+      if (state?.code) {
+        this.stateCodeLookup.set(state.code.toUpperCase(), state.id || state.code.toUpperCase());
+      }
+    }
+
+    return states;
+  }
+
+  async getStates(options = {}) {
+    const states = await this.loadStates(options);
+    return states.map(({ code, name }) => ({ code, name }));
   }
 
   async getStateFeeds(stateId, options = {}) {
     if (!stateId) {
       throw new Error('stateId is required');
     }
-    const cacheKey = `broadcastify:state:${stateId}:feeds`;
+    const resolvedStateId = await this.resolveStateIdentifier(stateId, options);
+    const cacheKey = `broadcastify:state:${resolvedStateId}:feeds`;
     return this._getCachedOrFetch(cacheKey, async () => {
-      const payload = await this.fetchJson(`/calls/states/${encodeURIComponent(stateId)}`, options);
+      const payload = await this.fetchJson(`/calls/states/${encodeURIComponent(resolvedStateId)}`, options);
       const feeds = Array.isArray(payload?.feeds) ? payload.feeds : Array.isArray(payload) ? payload : [];
       return feeds.map((feed) => normaliseFeed(feed)).filter(Boolean);
     }, options);
+  }
+
+  async resolveStateIdentifier(stateId, options = {}) {
+    const raw = typeof stateId === 'number' ? String(stateId) : String(stateId || '').trim();
+    if (!raw) {
+      throw new Error('stateId is required');
+    }
+
+    const upper = raw.toUpperCase();
+
+    if (!this.stateCodeLookup.size || options.refresh) {
+      await this.loadStates(options);
+    }
+
+    return this.stateCodeLookup.get(upper) || raw;
   }
 
   async getStateCounties(stateId, options = {}) {

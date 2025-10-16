@@ -65,7 +65,7 @@ function App() {
     severities: new Set(),
     timeframe: '24h',
     heatmap: false,
-    state: ALL_STATE_OPTION,
+    state: 'IA',
     county: ALL_COUNTY_OPTION,
     stream: DEFAULT_STREAM_SOURCE
   });
