@@ -6,5 +6,8 @@
   "scripts": {
     "start": "node server/index.js"
   },
+  "dependencies": {
+    "redis": "^4.6.11"
+  },
   "license": "MIT"
 }

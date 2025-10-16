@@ -1,8 +1,9 @@
 import { Dispatch, SetStateAction, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ALL_STATE_OPTION, US_STATES } from '../constants/states';
-import { ALL_COUNTY_OPTION, getCountiesForState } from '../constants/counties';
+import { ALL_STATE_OPTION } from '../constants/states';
+import { ALL_COUNTY_OPTION } from '../constants/counties';
 import { STREAM_SOURCES, StreamSource } from '../constants/streams';
+import { useBroadcastifyRegions } from '../hooks/useBroadcastifyRegions';
 
 export type Category = 'violent' | 'property' | 'traffic' | 'other';
 export type Severity = 'low' | 'medium' | 'high' | 'critical';
@@ -93,6 +94,7 @@ export function Filters({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [stateDraft, setStateDraft] = useState(filters.state);
   const [countyDraft, setCountyDraft] = useState(filters.county);
+  const { states, counties, loadingStates, loadingCounties } = useBroadcastifyRegions(stateDraft);
   const feedbackTone = useMemo(() => {
     if (!feedback) return '';
     return feedback.includes('updated') ? 'text-amber-300' : 'text-emerald-300';
@@ -104,16 +106,26 @@ export function Filters({
   }, [filters.state, filters.county]);
 
   useEffect(() => {
-    const counties = getCountiesForState(stateDraft);
-    if (countyDraft !== ALL_COUNTY_OPTION && !counties.includes(countyDraft)) {
+    const available = counties;
+    if (countyDraft !== ALL_COUNTY_OPTION && !available.includes(countyDraft)) {
       setCountyDraft(ALL_COUNTY_OPTION);
     }
-  }, [stateDraft, countyDraft]);
+  }, [stateDraft, countyDraft, counties]);
 
   const availableCounties = useMemo(() => {
-    const counties = getCountiesForState(stateDraft);
     return [ALL_COUNTY_OPTION, ...counties];
-  }, [stateDraft]);
+  }, [counties]);
+
+  useEffect(() => {
+    if (stateDraft === ALL_STATE_OPTION) {
+      return;
+    }
+    if (states.length === 0) {
+      setStateDraft(ALL_STATE_OPTION);
+    } else if (!states.some((state) => state.code === stateDraft)) {
+      setStateDraft(ALL_STATE_OPTION);
+    }
+  }, [states, stateDraft]);
 
   const needsLocationApply = stateDraft !== filters.state || countyDraft !== filters.county;
 
@@ -175,10 +187,11 @@ export function Filters({
             id="state-select"
             value={stateDraft}
             onChange={(event) => setStateDraft(event.target.value)}
+            disabled={loadingStates && states.length === 0}
             className="w-full rounded-lg border border-slate-700/60 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 shadow-sm focus:border-emerald-400/80 focus:outline-none focus:ring focus:ring-emerald-500/30"
           >
             <option value={ALL_STATE_OPTION}>Nationwide (all states)</option>
-            {US_STATES.map((state) => (
+            {states.map((state) => (
               <option key={state.code} value={state.code}>
                 {state.name}
               </option>
@@ -206,10 +219,15 @@ export function Filters({
             id="county-select"
             value={countyDraft}
             onChange={(event) => setCountyDraft(event.target.value)}
+            disabled={stateDraft === ALL_STATE_OPTION || loadingCounties}
             className="w-full rounded-lg border border-slate-700/60 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 shadow-sm focus:border-emerald-400/80 focus:outline-none focus:ring focus:ring-emerald-500/30"
           >
             <option value={ALL_COUNTY_OPTION}>
-              {stateDraft === ALL_STATE_OPTION ? 'All counties (nationwide)' : 'All counties'}
+              {stateDraft === ALL_STATE_OPTION
+                ? 'All counties (nationwide)'
+                : loadingCounties
+                  ? 'Loading counties…'
+                  : 'All counties'}
             </option>
             {availableCounties
               .filter((county) => county !== ALL_COUNTY_OPTION)

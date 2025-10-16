@@ -4,12 +4,17 @@ const path = require('path');
 const { URL } = require('url');
 const IncidentService = require('./incident-service');
 const logger = require('./logger');
+const { createBroadcastifyIntegration } = require('./broadcastify');
+const { createBroadcastifyRouter } = require('./broadcastify/router');
 
 const PORT = process.env.PORT ? Number.parseInt(process.env.PORT, 10) : 8080;
 const INCIDENT_STREAM_PATH = '/stream/incidents';
 
 const incidentService = new IncidentService();
 incidentService.start();
+
+const broadcastifyIntegration = createBroadcastifyIntegration();
+const broadcastifyRouter = createBroadcastifyRouter(broadcastifyIntegration);
 
 const sseClients = new Set();
 
@@ -149,7 +154,7 @@ incidentService.on('update', (incidents) => {
   }
 });
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
   const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
 
   if (req.method === 'GET' && parsedUrl.pathname === INCIDENT_STREAM_PATH) {
@@ -167,6 +172,10 @@ const server = http.createServer((req, res) => {
       return sendJson(res, 404, { error: 'Incident not found' });
     }
     return sendJson(res, 200, { incident });
+  }
+
+  if (await broadcastifyRouter(req, res, parsedUrl)) {
+    return;
   }
 
   const publicPath = path.join(__dirname, '..', 'public');

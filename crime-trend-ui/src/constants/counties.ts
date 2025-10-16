@@ -52,7 +52,7 @@ export function isValidCountySelection(stateCode: string, county: unknown): coun
   const upper = stateCode.toUpperCase();
   const counties = COUNTY_DATA[upper];
   if (!counties || counties.length === 0) {
-    return county === ALL_COUNTY_OPTION;
+    return true;
   }
   return counties.includes(county);
 }
