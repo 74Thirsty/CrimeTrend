@@ -74,6 +74,10 @@ Restart the backend (`npm start`) and visit `http://localhost:8080` to load the 
 - Hot zone detection buckets incidents into ~1km² cells (two decimal precision) and flags clusters of four or more events within the selected timeframe.
 - Styling is dark-mode first. A theme toggle toggles the `dark` class on `<html>`; extend as needed for full light mode palettes.
 
+## Additional Documentation
+
+- [Broadcastify Integration Guide](docs/broadcastify_integration.md) – Architecture overview, implementation patterns, and deployment considerations for incorporating Broadcastify streams across all states and counties.
+
 ## License
 
 MIT
