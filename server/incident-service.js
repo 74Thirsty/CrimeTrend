@@ -406,6 +406,31 @@ class IncidentService extends EventEmitter {
     return body.includes('No such column') && body.includes(columnName);
   }
 
+  detectIncompatibleColumn(body, columnName) {
+    if (!body || !columnName) return false;
+    try {
+      const parsed = JSON.parse(body);
+      if (parsed?.errorCode === 'query.soql.type-mismatch') {
+        const positionLine = parsed?.data?.position?.line || '';
+        const serializedColumn = `\`${columnName}\``;
+        if (positionLine.includes(serializedColumn)) {
+          return true;
+        }
+        const message = parsed?.message || '';
+        if (message.includes(serializedColumn)) {
+          return true;
+        }
+      }
+    } catch (_) {
+      // Body wasn't JSON – fall through to string matching below.
+    }
+    return (
+      body.includes('query.soql.type-mismatch') &&
+      body.includes(columnName) &&
+      body.includes('Type mismatch')
+    );
+  }
+
   async fetchIncidents(primaryTimeField, since) {
     const params = new URLSearchParams();
     params.set('$limit', String(this.options.limit));
@@ -424,7 +449,9 @@ class IncidentService extends EventEmitter {
     const body = await response.text();
     if (!response.ok) {
       const missingColumn =
-        response.status === 400 && this.detectMissingColumn(body, primaryTimeField);
+        response.status === 400 &&
+        (this.detectMissingColumn(body, primaryTimeField) ||
+          this.detectIncompatibleColumn(body, primaryTimeField));
       const error = new Error(`Failed to fetch incidents: ${response.status} ${body}`);
       error.missingColumn = missingColumn;
       throw error;
