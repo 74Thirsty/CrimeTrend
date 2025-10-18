@@ -55,6 +55,70 @@ function normaliseStateEntry(entry) {
   return { code: code.toUpperCase(), name, id: id || code.toUpperCase() };
 }
 
+function extractStreamUrl(entry) {
+  if (!entry || typeof entry !== 'object') {
+    return null;
+  }
+
+  const directFields = [
+    'stream_url',
+    'streamUrl',
+    'listen_url',
+    'listenUrl',
+    'url',
+    'stream',
+    'audio_url',
+    'audioUrl',
+    'feed_url',
+    'feedUrl'
+  ];
+
+  for (const field of directFields) {
+    const value = entry[field];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  const nestedCandidates = [];
+  if (Array.isArray(entry.streams)) {
+    nestedCandidates.push(...entry.streams);
+  }
+  if (entry.media && Array.isArray(entry.media.streams)) {
+    nestedCandidates.push(...entry.media.streams);
+  }
+  if (entry.media && Array.isArray(entry.media.audio)) {
+    nestedCandidates.push(...entry.media.audio);
+  }
+  if (entry.links && Array.isArray(entry.links.streams)) {
+    nestedCandidates.push(...entry.links.streams);
+  }
+
+  for (const candidate of nestedCandidates) {
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate.trim();
+    }
+    if (candidate && typeof candidate === 'object') {
+      const nestedUrl = extractStreamUrl(candidate);
+      if (nestedUrl) {
+        return nestedUrl;
+      }
+      if (typeof candidate.url === 'string' && candidate.url.trim()) {
+        return candidate.url.trim();
+      }
+    }
+  }
+
+  if (entry.broadcastify && typeof entry.broadcastify === 'object') {
+    const nestedUrl = extractStreamUrl(entry.broadcastify);
+    if (nestedUrl) {
+      return nestedUrl;
+    }
+  }
+
+  return null;
+}
+
 function normaliseFeed(entry) {
   if (!entry || typeof entry !== 'object') {
     return null;
@@ -66,8 +130,9 @@ function normaliseFeed(entry) {
     (entry.location && entry.location.county) ||
     entry.countyName ||
     null;
-  const streamUrl = entry.stream_url || entry.streamUrl || entry.url || null;
-  const active = entry.active !== false && entry.status !== 'offline';
+  const streamUrl = extractStreamUrl(entry);
+  const status = typeof entry.status === 'string' ? entry.status.toLowerCase() : entry.status;
+  const active = entry.active !== false && status !== 'offline' && status !== 'down';
   const state = entry.state || entry.state_code || entry.stateCode || null;
   return {
     id: feedId,
@@ -247,3 +312,4 @@ class BroadcastifyManager {
 }
 
 module.exports = BroadcastifyManager;
+module.exports.extractStreamUrl = extractStreamUrl;
