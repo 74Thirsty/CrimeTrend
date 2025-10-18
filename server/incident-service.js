@@ -436,7 +436,8 @@ class IncidentService extends EventEmitter {
     params.set('$limit', String(this.options.limit));
     params.set('$order', `${primaryTimeField} DESC`);
     const sinceIso = since.toISOString();
-    params.set('$where', `${primaryTimeField} >= datetime '${sinceIso}'`);
+    const soqlTimestamp = sinceIso.replace(/Z$/, '');
+    params.set('$where', `${primaryTimeField} >= '${soqlTimestamp}'`);
 
     const url = `${this.options.endpoint}?${params.toString()}`;
     const headers = { Accept: 'application/json' };
