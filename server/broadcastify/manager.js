@@ -93,6 +93,10 @@ class BroadcastifyManager {
     }
   }
 
+  hasCredentials() {
+    return Boolean(this.apiKey);
+  }
+
   async getCache() {
     if (!this.cacheClient) {
       this.cacheClient = await this.cachePromise;
@@ -153,6 +157,12 @@ class BroadcastifyManager {
   }
 
   async loadStates(options = {}) {
+    if (!this.hasCredentials()) {
+      logger.info('broadcastify api key not configured, returning empty state list');
+      this.stateCodeLookup = new Map();
+      return [];
+    }
+
     const cacheKey = 'broadcastify:states';
     const states = await this._getCachedOrFetch(cacheKey, async () => {
       const payload = await this.fetchJson('/calls/states', options);
@@ -187,6 +197,10 @@ class BroadcastifyManager {
   }
 
   async getStateFeeds(stateId, options = {}) {
+    if (!this.hasCredentials()) {
+      logger.info('broadcastify api key not configured, skipping state feed lookup', { stateId });
+      return [];
+    }
     if (!stateId) {
       throw new Error('stateId is required');
     }
@@ -215,6 +229,10 @@ class BroadcastifyManager {
   }
 
   async getStateCounties(stateId, options = {}) {
+    if (!this.hasCredentials()) {
+      logger.info('broadcastify api key not configured, skipping county lookup', { stateId });
+      return [];
+    }
     const feeds = await this.getStateFeeds(stateId, options);
     const counties = new Map();
     for (const feed of feeds) {
@@ -234,6 +252,10 @@ class BroadcastifyManager {
   }
 
   async getCountyFeeds(countyId, options = {}) {
+    if (!this.hasCredentials()) {
+      logger.info('broadcastify api key not configured, skipping county feed lookup', { countyId });
+      return [];
+    }
     if (!countyId) {
       throw new Error('countyId is required');
     }
