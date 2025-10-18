@@ -1,5 +1,8 @@
 'use strict';
 
+const managerModule = require('./manager');
+const extractStreamUrl = managerModule.extractStreamUrl || (() => null);
+
 class StreamProcessor {
   constructor(broadcastifyManager) {
     this.manager = broadcastifyManager;
@@ -14,12 +17,32 @@ class StreamProcessor {
       return null;
     }
 
-    const streamUrl = feedData.streamUrl;
+    const streamUrl = this.resolveStreamUrl(feedData);
     if (!this.isValidStreamUrl(streamUrl)) {
       return null;
     }
 
     return streamUrl;
+  }
+
+  resolveStreamUrl(feedData) {
+    if (!feedData) {
+      return null;
+    }
+
+    if (typeof feedData.streamUrl === 'string') {
+      return feedData.streamUrl;
+    }
+
+    if (feedData.raw) {
+      try {
+        return extractStreamUrl(feedData.raw);
+      } catch (_) {
+        return null;
+      }
+    }
+
+    return null;
   }
 
   isValidStreamUrl(url) {
