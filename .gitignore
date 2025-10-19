@@ -1,0 +1,22 @@
+# Node dependencies
+node_modules/
+crime-trend-ui/node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+.env.*
+
+# Build outputs
+public/dist/
+public/build/
+crime-trend-ui/dist/
+
+# Misc
+.DS_Store
+.vscode/
+.idea/
