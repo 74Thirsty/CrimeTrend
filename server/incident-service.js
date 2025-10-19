@@ -204,6 +204,17 @@ function safeTimestamp(value) {
   return value || null;
 }
 
+function formatSoqlTimestamp(date) {
+  if (!(date instanceof Date)) {
+    return null;
+  }
+  const time = date.getTime();
+  if (!Number.isFinite(time)) {
+    return null;
+  }
+  return date.toISOString().replace(/\.\d{3}Z$/, '');
+}
+
 function buildIncidentSignature(incident) {
   const timelineFingerprint = (incident.timeline || [])
     .map((step) => `${step.code || ''}:${safeTimestamp(step.timestamp) || ''}`)
@@ -435,9 +446,8 @@ class IncidentService extends EventEmitter {
     const params = new URLSearchParams();
     params.set('$limit', String(this.options.limit));
     params.set('$order', `${primaryTimeField} DESC`);
-    const sinceIso = since.toISOString();
-    const soqlTimestamp = sinceIso.replace(/Z$/, '');
-    params.set('$where', `${primaryTimeField} >= '${soqlTimestamp}'`);
+    const formattedTimestamp = formatSoqlTimestamp(since) || since.toISOString();
+    params.set('$where', `${primaryTimeField} >= '${formattedTimestamp}'`);
 
     const url = `${this.options.endpoint}?${params.toString()}`;
     const headers = { Accept: 'application/json' };
