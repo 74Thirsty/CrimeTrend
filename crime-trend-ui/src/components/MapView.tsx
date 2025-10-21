@@ -1,23 +1,17 @@
 import { useMemo } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Tooltip, LayersControl, LayerGroup } from 'react-leaflet';
+import { MapContainer, TileLayer, LayersControl, LayerGroup, CircleMarker, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { HotZone, Incident } from '../hooks/useIncidentStream';
 import type { FilterState } from './Filters';
 import { ALL_STATE_OPTION } from '../constants/states';
 import { ALL_COUNTY_OPTION } from '../constants/counties';
+import { MapLayer } from './MapLayer';
 
 interface MapViewProps {
   incidents: Incident[];
   filters: FilterState;
   hotZones?: HotZone[];
 }
-
-const categoryColor: Record<string, string> = {
-  violent: '#ef4444',
-  property: '#f97316',
-  traffic: '#3b82f6',
-  other: '#10b981'
-};
 
 export function MapView({ incidents, filters, hotZones = [] }: MapViewProps) {
   const filtered = useMemo(() => {
@@ -55,32 +49,22 @@ export function MapView({ incidents, filters, hotZones = [] }: MapViewProps) {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <LayersControl position="topright">
-            <LayersControl.BaseLayer checked name="Pins">
+            <LayersControl.BaseLayer checked name="Incident layer">
               <LayerGroup>
-                {filtered.map((incident) => (
-                  <CircleMarker
-                    key={incident.id}
-                    center={[incident.coordinates.lat, incident.coordinates.lng]}
-                    radius={8}
-                    pathOptions={{
-                      color: categoryColor[incident.category] ?? '#22d3ee',
-                      fillColor: categoryColor[incident.category] ?? '#22d3ee',
-                      fillOpacity: 0.6,
-                      className: 'animate-pulseGlow'
-                    }}
-                  >
-                    <Tooltip direction="top" offset={[0, -6]} opacity={1} className="bg-white/95 text-slate-700 shadow dark:bg-slate-900/90 dark:text-slate-200">
-                      <div className="space-y-1 text-xs">
-                        <p className="font-semibold text-slate-900 dark:text-white">{incident.title}</p>
-                        <p className="text-slate-600 dark:text-slate-300">{incident.location}</p>
-                        {incident.state && <p className="text-slate-500 dark:text-slate-400">{incident.state}</p>}
-                        <p className="text-slate-500 dark:text-slate-400">{incident.severity.toUpperCase()}</p>
-                        <p className="text-slate-500 dark:text-slate-400">{incident.confidence}% confidence</p>
-                        <p className="text-slate-500 dark:text-slate-500">{incident.source.name}</p>
-                      </div>
-                    </Tooltip>
-                  </CircleMarker>
-                ))}
+                <MapLayer
+                  incidents={filtered.map((incident) => ({
+                    id: incident.id,
+                    timestamp: incident.timestamp,
+                    type: incident.canonical.type || incident.title,
+                    agency: incident.canonical.agency || incident.source.name,
+                    address: incident.location,
+                    lat: incident.coordinates.lat,
+                    lon: incident.coordinates.lng,
+                    status: incident.canonical.status || incident.status || 'unknown',
+                    source: incident.canonical.source || incident.source.name,
+                    audio_url: incident.canonical.audioUrl ?? undefined
+                  }))}
+                />
               </LayerGroup>
             </LayersControl.BaseLayer>
             {hotZones.length > 0 && (

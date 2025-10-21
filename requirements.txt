@@ -1,0 +1,9 @@
+aiohttp
+fastapi
+uvicorn[standard]
+redis[hiredis]
+pydantic
+python-dotenv
+pytest
+pytest-asyncio
+coverage
