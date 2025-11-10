@@ -1,3 +1,7 @@
+# CrimeTrend
+![Sheen Banner](https://raw.githubusercontent.com/74Thirsty/74Thirsty/main/assets/crime.svg)
+
+
 # CrimeTrend Data Revolution
 
 CrimeTrend is a real-time incident intelligence platform that ingests public safety data from open feeds, normalises it into a canonical schema, and streams the results to a live geospatial dashboard. The refreshed architecture replaces the legacy Node/SSE stack with an asyncio-first Python backend, a Redis-backed ingestion queue, and a WebSocket-powered React interface ready for optional Broadcastify audio overlays.
